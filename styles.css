@@ -72,3 +72,22 @@
  .canvas.it2 .seat strong{font-size:9px}
  .canvas.it2 .it2-table{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+
+/* Whole-class homework marking. The red outline distinguishes the temporary
+   selection from SEND/PP seat-priority colours without changing the saved room. */
+.canvas .seat.homework-missing{
+ background:#fff0db!important;border:3px solid #c4482a!important;
+ box-shadow:0 0 0 3px rgba(196,72,42,.16)!important;
+}
+.canvas .seat.homework-missing strong{color:#7b2616;font-weight:850}
+.canvas .seat.homework-missing::after{
+ content:"MISSING";font-size:8px;font-weight:850;letter-spacing:.3px;
+ color:#a4351e;
+}
+@media(max-width:740px){
+ .canvas .seat.homework-missing::after{font-size:6px;letter-spacing:0}
+}
+@media print{
+ .canvas .seat.homework-missing::after{display:none}
+ .canvas .seat.homework-missing{border-color:#aaa!important;background:#fff!important}
+}
