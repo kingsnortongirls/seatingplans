@@ -40,6 +40,7 @@ export const CSV_FIELDS = {
  readingAge:[/readingage/], readingSS:[/readingss$/,/readingstandardisedscore/],
  spellingAge:[/spellingage/], spellingSS:[/spellingss$/,/spellingstandardisedscore/],
  ks2Reading:[/ks2readingscaledscore/], ks2Maths:[/ks2mathsscaledscore/],
+ externalId:[/^learnerid$/,/^pupilid$/,/^studentid$/,/^admissionnumber$/,/^upn$/],
  target:[/csat/,/generalat/,/targetgrade$/,/^target$/],
  current:[/cotta/,/currentgrade$/, /workingat$/]
 };
@@ -48,7 +49,7 @@ export function readEdulink(text) {
  if(!headers.some(h=>CSV_FIELDS.name.some(r=>r.test(norm(h)))))throw new Error('Could not find a Learner / Pupil Name column.');
  const result=records.map(row=>{
    const val=k=>pick(row,CSV_FIELDS[k]);
-   return {name:displayName(val('name')),className:val('class')||'Imported Class',reg:val('reg'),
+   return {name:displayName(val('name')),className:val('class')||'Imported Class',reg:val('reg'),externalId:val('externalId'),
      pp:val('pp'),fsm:val('fsm'),eal:val('eal'),send:val('send'),need:val('need'),more:val('more'),
      prior:val('prior'),readingAge:val('readingAge'),readingSS:val('readingSS'),spellingAge:val('spellingAge'),
      spellingSS:val('spellingSS'),ks2Reading:val('ks2Reading'),ks2Maths:val('ks2Maths'),
@@ -58,6 +59,46 @@ export function readEdulink(text) {
  return {students:result,headers,matched:Object.keys(CSV_FIELDS).filter(k=>headers.some(h=>CSV_FIELDS[k].some(r=>r.test(norm(h)))))};
 }
 
+// Edulink imports are proposed, never applied, until a teacher has reviewed them.
+// An external identifier, when available, is used only within the same class;
+// otherwise a unique normalised-name match is suggested.
+export function buildEdulinkReview(classes,students,rows) {
+ const seen=new Set();
+ const items=rows.map((incoming,index)=>{
+  const group=clean(incoming.className)||'Imported Class';
+  const cls=classes.find(c=>clean(c.name).toLowerCase()===group.toLowerCase());
+  const existing=students.filter(s=>s.classId===cls?.id);
+  const signature=group.toLowerCase()+'|'+nameKey(incoming.name);
+  const duplicate=seen.has(signature);seen.add(signature);
+  let candidates=[];
+  if(clean(incoming.externalId))candidates=existing.filter(s=>clean(s.externalId)&&clean(s.externalId)===clean(incoming.externalId));
+  if(!candidates.length)candidates=existing.filter(s=>nameKey(s.name)===nameKey(incoming.name));
+  const suggestedId=duplicate?'':candidates.length===1?candidates[0].id:'';
+  return {index,incoming,group,classId:cls?.id||'',duplicate,suggestedId,
+   status:duplicate?'duplicate':candidates.length>1?'ambiguous':suggestedId?'matched':'new'};
+ });
+ const groups=new Set(items.map(x=>x.group.toLowerCase()));
+ const matched=new Set(items.map(x=>x.suggestedId).filter(Boolean));
+ const notInExport=students.filter(s=>s.active!==false&&classes.some(c=>c.id===s.classId&&groups.has(clean(c.name).toLowerCase()))&&!matched.has(s.id));
+ return {items,notInExport};
+}
+export function placeStudent(plan,seatId,pupilId) {
+ if(!plan.layout.seats.some(s=>s.id===seatId))throw new Error('Seat no longer exists in this layout.');
+ if(!pupilId)throw new Error('Select a pupil first.');
+ const assignments={...plan.assignments};
+ const source=Object.keys(assignments).find(id=>assignments[id]===pupilId);
+ const displaced=assignments[seatId];
+ if(source===seatId)return {assignments,action:'unchanged'};
+ if((plan.locks||[]).includes(seatId)&&displaced!==pupilId)throw new Error('Unlock the destination seat before moving a pupil.');
+ if(source&&(plan.locks||[]).includes(source))throw new Error('Unlock the pupil’s current seat before moving them.');
+ if(displaced&&!source)throw new Error('This seat is occupied. Choose an empty seat for this pupil, or select a seated pupil to swap places.');
+ if(source){
+  if(displaced)assignments[source]=displaced;
+  else delete assignments[source];
+ }
+ assignments[seatId]=pupilId;
+ return {assignments,action:displaced?'swapped':source?'moved':'seated'};
+}
 // Read ZIP central-directory records. DOCX is a ZIP file. Deflate uses the browser's native
 // DecompressionStream (no external parser, CDN, service, or data transfer).
 const u16=(v,i)=>v.getUint16(i,true), u32=(v,i)=>v.getUint32(i,true);
@@ -253,6 +294,38 @@ export function accessReport(plan,studentList,assignments=plan.assignments){
  };
 }
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+// Human-readable checks are separate from the optimiser: required vs advisory,
+// fulfilled vs pending/unfulfilled, and the exact affected pupils.
+export function auditRules(plan,studentList,assignments=plan.assignments){
+ const idMap=new Map(studentList.map(s=>[s.id,s]));
+ const seatMap=new Map(plan.layout.seats.map(s=>[s.id,s]));
+ const pupilSeat=new Map(Object.entries(assignments).map(([seat,id])=>[id,seatMap.get(seat)]));
+ const checks=(plan.rules||[]).map((rule,index)=>{
+  const a=idMap.get(rule.a),b=rule.b?idMap.get(rule.b):null;
+  const first=pupilSeat.get(rule.a),second=rule.b?pupilSeat.get(rule.b):null;
+  const required=rule.type==='apart'||(rule.type==='priority'&&!!rule.strict);
+  const names=[a?.name||'Unknown pupil',...(rule.b?[b?.name||'Unknown pupil']:[])];
+  const base={id:rule.id||String(index),type:rule.type,required,pupilIds:[rule.a,...(rule.b?[rule.b]:[])],names};
+  if(!a||(rule.type!=='priority'&&!b))return {...base,status:'invalid',description:'Rule refers to a pupil who is not in the current class'};
+  const name=names.join(' and ');
+  if(!first||(rule.type!=='priority'&&!second))return {...base,status:'pending',description:name+' not yet fully seated'};
+  if(rule.type==='apart'){
+   const bad=rule.mode==='group'?first.group===second.group:distance(first,second)<(Number(rule.distance)||15);
+   return {...base,status:bad?'unmet':'met',description:rule.mode==='group'?name+' must be in different table groups':name+' must be at least '+(Number(rule.distance)||15)+' units apart'};
+  }
+  if(rule.type==='together')return {...base,status:distance(first,second)>19?'unmet':'met',description:name+' are preferred together'};
+  if(rule.type==='priority')return {...base,status:preferred(first,rule.mode,plan.layout.board)?'met':'unmet',description:a.name+' needs '+(rule.mode==='front'?'a front position':rule.mode==='access'?'an easy-access seat':'a preferred-access seat')};
+  return {...base,status:'invalid',description:'Unknown seating rule type'};
+ });
+ return {
+  checks,
+  required:checks.filter(x=>x.required&&(x.status==='unmet'||x.status==='invalid')),
+  advisory:checks.filter(x=>!x.required&&(x.status==='unmet'||x.status==='invalid')),
+  pending:checks.filter(x=>x.status==='pending'),
+  met:checks.filter(x=>x.status==='met'),
+  valid:!checks.some(x=>x.required&&(x.status==='unmet'||x.status==='invalid'))
+ };
+}
 export function issuesFor(plan,assignments=plan.assignments) {
  const byStudent=Object.fromEntries(Object.entries(assignments).map(([seat,id])=>[id,plan.layout.seats.find(s=>s.id===seat)]));
  const issues=[];
