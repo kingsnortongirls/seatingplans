@@ -21,13 +21,16 @@
    <button type="button" class="nav-item" data-view="rooms"><span>▤</span> Room designer</button>
    <button type="button" class="nav-item" data-view="profiles"><span>♙</span> Pupil profiles</button>
    <button type="button" class="nav-item" data-view="records"><span>▣</span> Teacher records</button>
+   <button type="button" class="nav-item" data-view="lesson"><span>◷</span> Lesson mode</button>
+   <button type="button" class="nav-item" data-view="assessments"><span>▥</span> Assessment history</button>
+   <button type="button" class="nav-item" data-view="overview"><span>◩</span> Class overview</button>
    <button type="button" class="nav-item" data-view="tools"><span>⚄</span> Teaching tools</button>
    <button type="button" class="nav-item" data-view="backup"><span>◇</span> Backup &amp; restore</button>
   </nav>
   <div class="sidebar-bottom"><p class="small">No accounts. No analytics. No data uploads. Save only when you export a backup.</p><button type="button" class="btn btn-ghost btn-block" id="clearSession">Clear session</button></div>
  </aside>
  <div class="main-column">
-  <header class="topbar"><button type="button" class="mobile-menu" id="menuToggle" aria-label="Toggle navigation">☰</button><div id="breadcrumbs">Your workspace</div><div class="top-actions"><span id="saveIndicator" class="save-indicator">Session only</span><button type="button" class="btn btn-small" id="undoButton" title="Undo (Ctrl+Z)">↶ Undo</button><button type="button" class="btn btn-small" id="redoButton" title="Redo (Ctrl+Y)">↷ Redo</button><button type="button" class="btn btn-primary btn-small" id="quickBackup">↓ Backup</button></div></header>
+  <header class="topbar"><button type="button" class="mobile-menu" id="menuToggle" aria-label="Toggle navigation">☰</button><div id="breadcrumbs">Your workspace</div><div class="top-actions"><span id="saveIndicator" class="save-indicator">Session only</span><button type="button" class="btn btn-small" id="privacyToggle" title="Hide information instantly">◈ Privacy lock</button><button type="button" class="btn btn-small" id="undoButton" title="Undo (Ctrl+Z)">↶ Undo</button><button type="button" class="btn btn-small" id="redoButton" title="Redo (Ctrl+Y)">↷ Redo</button><button type="button" class="btn btn-primary btn-small" id="quickBackup">↓ Backup</button></div></header>
   <main id="app" tabindex="-1" aria-live="polite"></main>
  </div>
 </div>
