@@ -57,6 +57,12 @@ async def main():
             # After reviewing the CSV, the wizard offers the next group or a backup.
             assert await page.get_by_role('button',name='Import next class').count()==1
             assert await page.get_by_role('button',name="I'm finished · Create backup").count()==1
+            # Repeat the wizard for a second fictional class, preserving the first.
+            await page.get_by_role('button',name='Import next class').click()
+            another=b'Learner,Class,Student ID,Target,COTTA Nov\\nPupil Delta,9X/CS,ID4,7,6\\n'
+            await page.locator('#csvFile').set_input_files({'name':'second-synthetic.csv','mimeType':'text/csv','buffer':another})
+            await page.get_by_role('button',name='Confirm reviewed import').click()
+            assert await page.get_by_text('2 teaching groups',exact=False).count()>=1
             await page.get_by_role('button',name="I'm finished · Create backup").click()
             assert await page.get_by_text('Create encrypted backup').count()>=1
             await page.locator('#modalRoot [data-action=close-modal]').click()
