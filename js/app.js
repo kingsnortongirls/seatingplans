@@ -2,7 +2,7 @@ import {uid,clone,clean,esc,short,nameKey,isoDate,readEdulink,buildEdulinkReview
 
 // Everything below exists in memory only. No localStorage, cookies, IndexedDB, API calls or telemetry.
 const initial=()=>({schema:1,classes:[],students:[],rooms:[defaultRoom(),buildPreset('it3','IT3'),buildPreset('it2','IT2')],plans:[],records:[],assessments:[],questioned:{},questioningLog:[],yearRollovers:[],pendingOPPs:[],categories:['Late to lesson','Homework not submitted','Truancy','Lack of effort','Disrespect','Missing equipment','Disruption','Not following instructions','Incomplete classwork','Other']});
-let data=initial(),view='dashboard',classId='',roomId=data.rooms[0].id,planId='',selectedStudent='',selectedSeat='',selectedRecord='',dirty=false,history=[],future=[],profileTab='support',searchTerm='',recordFilter='all',printMode='teacher',groupResult=[],lastPicked='',pickerExclude=true,absent=new Set(),layoutMode='move',pendingOPPs=[],oppSummary='',importSummary='',dragState=null,homeworkSession=null,projectorWindow=null,backupVerifyStatus='',hideIndicators=false,privacyLocked=false,lessonTimer={remaining:300,running:false,endsAt:0},lessonTimerHandle=null,lastPickerState='',contextLongPress=null,suppressSeatClick=false,recordPeriod=30;
+let data=initial(),view='dashboard',classId='',roomId=data.rooms[0].id,planId='',selectedStudent='',selectedSeat='',selectedRecord='',dirty=false,history=[],future=[],profileTab='support',searchTerm='',recordFilter='all',printMode='teacher',groupResult=[],lastPicked='',pickerExclude=true,absent=new Set(),layoutMode='move',pendingOPPs=[],oppSummary='',importSummary='',dragState=null,homeworkSession=null,projectorWindow=null,backupVerifyStatus='',hideIndicators=false,privacyLocked=false,lessonTimer={remaining:300,running:false,endsAt:0},lessonTimerHandle=null,lastPickerState='',pickerSpin=null,contextLongPress=null,suppressSeatClick=false,recordPeriod=30;
 const $=sel=>document.querySelector(sel), $$=sel=>[...document.querySelectorAll(sel)];
 const currentClass=()=>data.classes.find(c=>c.id===classId);
 const currentRoom=()=>data.rooms.find(r=>r.id===roomId)||data.rooms[0];
@@ -26,7 +26,7 @@ function undo(){if(!history.length)return;backupVerifyStatus='';future.push(clon
 function redo(){if(!future.length)return;backupVerifyStatus='';history.push(clone(data));data=future.pop();reconcile();dirty=true;render();notice('Change restored.');}
 function reconcile(){if(!Array.isArray(data.assessments))data.assessments=[];if(!Array.isArray(data.questioningLog))data.questioningLog=[];if(!Array.isArray(data.yearRollovers))data.yearRollovers=[];if(!Array.isArray(data.pendingOPPs))data.pendingOPPs=[];if(!data.rooms.length)data.rooms=[defaultRoom()];if(!data.rooms.some(r=>r.id===roomId))roomId=data.rooms[0].id;if(!data.classes.some(c=>c.id===classId))classId=data.classes[0]?.id||'';if(!data.plans.some(p=>p.id===planId&&p.classId===classId))planId=data.plans.find(p=>p.classId===classId)?.id||'';}
 function goto(next){view=next;render();window.scrollTo({top:0,behavior:'instant'});}
-function setClass(id){if(homeworkSession&&homeworkSession.classId!==id){if(!confirm('Cancel unfinished homework marking and switch classes? No homework records have been written.'))return;homeworkSession=null;}classId=id;planId=data.plans.find(p=>p.classId===id)?.id||'';selectedStudent='';selectedSeat='';absent.clear();groupResult=[];lastPicked='';}
+function setClass(id){stopPickerSpin();if(homeworkSession&&homeworkSession.classId!==id){if(!confirm('Cancel unfinished homework marking and switch classes? No homework records have been written.'))return;homeworkSession=null;}classId=id;planId=data.plans.find(p=>p.classId===id)?.id||'';selectedStudent='';selectedSeat='';absent.clear();groupResult=[];lastPicked='';}
 function render(){reconcile();$$('#nav [data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view===view));$('#breadcrumbs').textContent=({dashboard:'Your workspace',seating:'Seating plans',lesson:'Lesson mode',assessments:'Assessment history',overview:'Class overview',rooms:'Classroom designer',profiles:'Pupil profiles',records:'Teacher records',tools:'Teaching tools',backup:'Backup & restore'})[view];$('#saveIndicator').textContent=dirty?'● Changes not backed up':'Session only';$('#undoButton').disabled=history.length===0;$('#redoButton').disabled=future.length===0;
  const views={dashboard:dashboard,seating:seating,lesson:lesson,assessments:assessmentsView,overview:classOverview,rooms:rooms,profiles:profiles,records:records,tools:tools,backup:backup};$('#privacyToggle').textContent=privacyLocked?'◈ Unlock screen':'◈ Privacy lock';$('#app').innerHTML=privacyLocked?'<div class="privacy-cover"><h1>Screen concealed</h1><p>Pupil and staff information is temporarily hidden. Select Unlock screen to return to your workspace.</p></div>':views[view]();}
 const classChoices=(value=classId)=>choose('classId',data.classes.map(c=>({value:c.id,label:c.name})),value,'data-action="select-class"');
@@ -238,6 +238,7 @@ function recordRows(rows,mini=false){return rows.length?`<div class="table-wrap"
 
 function setPrivacyLock(locked){
  privacyLocked=!!locked;
+ if(privacyLocked)stopPickerSpin();
  if(privacyLocked){
   closeModal();$('#toastRoot').replaceChildren();
   if(projectorWindow&&!projectorWindow.closed)projectorWindow.close();
@@ -262,7 +263,65 @@ function quickPupilMenu(id){
   if(which==='lock'&&seat){selectedSeat=seat.id;action('toggle-lock');}
  }));
 }
+// Pupil selection is determined *before* the visual animation, using a
+// uniformly distributed browser-crypto index when available. Animation does
+// not influence the choice or mark a pupil as having answered.
+function randomPupilIndex(n){
+ if(n<=1)return 0;
+ if(globalThis.crypto?.getRandomValues){
+  const value=new Uint32Array(1),range=4294967296;
+  const limit=Math.floor(range/n)*n;
+  do{crypto.getRandomValues(value);}while(value[0]>=limit);
+  return value[0]%n;
+ }
+ return Math.floor(Math.random()*n);
+}
+function stopPickerSpin(){
+ if(!pickerSpin)return;
+ if(pickerSpin.timer)clearTimeout(pickerSpin.timer);
+ pickerSpin=null;
+}
+function pickerDisplayName(){
+ return pickerSpin?.name||(lastPicked?student(lastPicked)?.name:'')||'Ready to pick';
+}
+function spinPupilPicker(){
+ if(pickerSpin)return;
+ const all=currentStudents().filter(s=>!pickerExclude||!absent.has(s.id));
+ const asked=data.questioned[classId]||[];
+ const unasked=all.filter(s=>!asked.includes(s.id));
+ if(!unasked.length){notice('Every available pupil has been questioned. Reset the round to start again.');return;}
+ const alternatives=unasked.filter(s=>s.id!==lastPicked);
+ const pool=alternatives.length?alternatives:unasked;
+ const winner=pool[randomPupilIndex(pool.length)];
+ const reduced=!!window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+ if(reduced||pool.length===1){
+  lastPicked=winner.id;lastPickerState='picked';render();renderProjector();return;
+ }
+ lastPicked='';lastPickerState='';
+ const spin={classId,targetId:winner.id,name:'Choosing…',step:0,timer:null};
+ pickerSpin=spin;
+ render();renderProjector();
+ const frames=24;
+ function nextFrame(){
+  if(pickerSpin!==spin||classId!==spin.classId||privacyLocked)return;
+  if(spin.step>=frames){
+   pickerSpin=null;lastPicked=spin.targetId;lastPickerState='picked';
+   render();renderProjector();return;
+  }
+  spin.name=pool[randomPupilIndex(pool.length)].name;
+  $('[data-picker-display]').forEach(el=>{el.textContent=spin.name;});
+  try{
+   const projected=projectorWindow&&!projectorWindow.closed?projectorWindow.document.querySelector('.picked-name'):null;
+   if(projected)projected.textContent=spin.name;
+  }catch(_){}
+  spin.step++;
+  const progress=spin.step/frames;
+  spin.timer=setTimeout(nextFrame,45+Math.round(165*progress*progress));
+ }
+ nextFrame();
+}
 function markPicked(status){
+ if(pickerSpin){notice('Let the names finish spinning before recording a response.');return;}
  if(!lastPicked||!currentStudents().some(s=>s.id===lastPicked)){notice('Pick a pupil first.','error');return;}
  const id=lastPicked;
  mutation(()=>{
@@ -317,12 +376,12 @@ function lesson(){
  button('Mark homework','start-homework','btn btn-primary')+button('Record behaviour','new-behaviour','btn')+
  button('Generate seats','auto-seat','btn')+'</div></section>'+
  '<div class="lesson-side">'+timerMarkup()+
- card('<div class="picker-stage"><strong>'+esc(picked?.name||'Ready to pick')+'</strong><small>'+esc(p&&picked?p.layout.seats.find(s=>p.assignments[s.id]===picked.id)?.label||'Not seated':'')+'</small></div>'+
- '<p>'+asked+' pupil(s) questioned in this round.</p><div class="button-row">'+button('Pick pupil','pick-student','btn btn-primary')+button('Questioned ✓','mark-questioned','btn')+button('Absent','mark-absent-picked','btn')+button('Reset lesson','reset-lesson','btn')+'</div>'+
+ card('<div class="picker-stage '+(pickerSpin?'is-spinning':'')+'"><strong data-picker-display aria-live="'+(pickerSpin?'off':'polite')+'">'+esc(pickerDisplayName())+'</strong><small>'+esc(p&&picked?p.layout.seats.find(s=>p.assignments[s.id]===picked.id)?.label||'Not seated':'')+'</small></div>'+
+ '<p>'+asked+' pupil(s) questioned in this round.</p><div class="button-row">'+button(pickerSpin?'Spinning…':'Pick pupil','pick-student','btn btn-primary',pickerSpin?'disabled':'')+button('Questioned ✓','mark-questioned','btn',pickerSpin?'disabled':'')+button('Absent','mark-absent-picked','btn',pickerSpin?'disabled':'')+button('Reset lesson','reset-lesson','btn')+'</div>'+
  '<p class="tiny muted">Pick does not mark the pupil questioned until you confirm.</p>','Questioning tracker')+
  card('<p>Shortcuts for lesson delivery.</p><div class="button-row">'+button('Teacher records','go-records','btn')+button('Class overview','go-overview','btn')+button('Projector view','projector-view','btn')+'</div>','Quick tools')+'</div></div>');
 }
-function tools(){const p=currentPlan(),list=currentStudents().filter(s=>!pickerExclude||!absent.has(s.id)),asked=new Set(data.questioned[classId]||[]);return heading('Teaching tools','Random questioning, attendance exclusions and intelligent pupil grouping.')+(!classId?card(empty('No classes yet','Import a marksheet first.')):`<div class="board-tools"><label>Class${classChoices()}</label>${p?`<label>Plan version${planChoices()}</label>`:''}</div><div class="grid two">${card(`<div class="picker-stage"><div><small class="muted">Random pupil picker</small><br><strong>${esc(lastPicked?student(lastPicked)?.name||'':'Ready to pick')}</strong>${lastPicked&&p?`<small class="muted">${esc((p.layout.seats.find(x=>p.assignments[x.id]===lastPicked)?.label||'Not seated'))}</small>`:''}</div></div><p class="muted tiny">${asked.size} of ${list.length} pupils questioned. Does not repeat until you reset the round.</p><label class="check"><input id="pickerExclude" type="checkbox" ${pickerExclude?'checked':''}> Exclude pupils marked absent</label><div class="button-row">${button('⚄ Pick a pupil','pick-student','btn btn-primary')}${button('Questioned ✓','mark-questioned','btn')}${button('Absent','mark-absent-picked','btn')}${button('Reset round','reset-picker','btn')}${button('Projector view','projector-view','btn')}${button('Fullscreen picker','fullscreen-picker','btn')}</div><details><summary>Mark pupils absent (${absent.size})</summary><div class="list-scroll" style="max-height:200px">${currentStudents().map(s=>`<label class="check"><input type="checkbox" data-absent="${esc(s.id)}" ${absent.has(s.id)?'checked':''}> ${esc(s.name)}</label>`).join('')}</div></details>`,'Questioning tracker')}${card(`<form id="groupForm"><div class="field-grid"><label>Group size<input name="size" type="number" min="2" max="12" value="4"></label><label>Grouping method${choose('mode',[{value:'random',label:'Random'},{value:'mixed',label:'Mixed attainment'},{value:'similar',label:'Similar attainment'},{value:'seating',label:'Nearby seating'}])}</label></div><label class="check"><input type="checkbox" name="excludeAbsent" checked> Exclude pupils marked absent</label><div class="button-row"><button class="btn btn-primary" type="submit">Generate groups</button>${button('Print groups','print-groups','btn')}</div></form><div id="groupDisplay">${groupsDisplay(groupResult)}</div><p class="tiny muted">Group separation restrictions are respected where possible. Check flagged conflicts before using groups.</p>`,'Grouping tool')}</div>`);}
+function tools(){const p=currentPlan(),list=currentStudents().filter(s=>!pickerExclude||!absent.has(s.id)),asked=new Set(data.questioned[classId]||[]);return heading('Teaching tools','Random questioning, attendance exclusions and intelligent pupil grouping.')+(!classId?card(empty('No classes yet','Import a marksheet first.')):`<div class="board-tools"><label>Class${classChoices()}</label>${p?`<label>Plan version${planChoices()}</label>`:''}</div><div class="grid two">${card(`<div class="picker-stage ${pickerSpin?'is-spinning':''}"><div><small class="muted">Random pupil picker</small><br><strong data-picker-display aria-live="${pickerSpin?'off':'polite'}">${esc(pickerDisplayName())}</strong>${lastPicked&&p?`<small class="muted">${esc((p.layout.seats.find(x=>p.assignments[x.id]===lastPicked)?.label||'Not seated'))}</small>`:''}</div></div><p class="muted tiny">${asked.size} of ${list.length} pupils questioned. Does not repeat until you reset the round.</p><label class="check"><input id="pickerExclude" type="checkbox" ${pickerExclude?'checked':''}> Exclude pupils marked absent</label><div class="button-row">${button(pickerSpin?'Spinning…':'⚄ Pick a pupil','pick-student','btn btn-primary',pickerSpin?'disabled':'')}${button('Questioned ✓','mark-questioned','btn')}${button('Absent','mark-absent-picked','btn')}${button('Reset round','reset-picker','btn')}${button('Projector view','projector-view','btn')}${button('Fullscreen picker','fullscreen-picker','btn')}</div><details><summary>Mark pupils absent (${absent.size})</summary><div class="list-scroll" style="max-height:200px">${currentStudents().map(s=>`<label class="check"><input type="checkbox" data-absent="${esc(s.id)}" ${absent.has(s.id)?'checked':''}> ${esc(s.name)}</label>`).join('')}</div></details>`,'Questioning tracker')}${card(`<form id="groupForm"><div class="field-grid"><label>Group size<input name="size" type="number" min="2" max="12" value="4"></label><label>Grouping method${choose('mode',[{value:'random',label:'Random'},{value:'mixed',label:'Mixed attainment'},{value:'similar',label:'Similar attainment'},{value:'seating',label:'Nearby seating'}])}</label></div><label class="check"><input type="checkbox" name="excludeAbsent" checked> Exclude pupils marked absent</label><div class="button-row"><button class="btn btn-primary" type="submit">Generate groups</button>${button('Print groups','print-groups','btn')}</div></form><div id="groupDisplay">${groupsDisplay(groupResult)}</div><p class="tiny muted">Group separation restrictions are respected where possible. Check flagged conflicts before using groups.</p>`,'Grouping tool')}</div>`);}
 function groupsDisplay(groups){if(!groups.length)return '<p class="muted tiny">No groups generated yet.</p>';const rules=currentPlan()?.rules||[];return `<div class="grid two" style="margin-top:15px">${groups.map((g,i)=>{let bad=g.some((s,j)=>g.some((t,k)=>k>j&&rules.some(r=>r.type==='apart'&&r.mode==='group'&&((r.a===s.id&&r.b===t.id)||(r.a===t.id&&r.b===s.id)))));return `<div class="group-result"><h3>Group ${i+1} ${bad?badge('Check restriction','red'):''}</h3><ol>${g.map(s=>`<li>${esc(s.name)}</li>`).join('')}</ol></div>`}).join('')}</div>`;}
 function backup(){return heading('Backup & restore','Your data is held in temporary memory until you explicitly download an encrypted file.')+`<div class="grid two">${card(`<div class="callout privacy"><strong>Encrypted full-session export</strong><p>Includes pupils, their OPPs and photographs, records, room templates, seating rules, all plan versions and questioning history. Encryption uses AES-256-GCM with a PBKDF2-derived key.</p></div><div class="button-row" style="margin-top:15px">${button('↓ Create encrypted backup','download-backup','btn btn-primary')}</div><p class="tiny muted">Use a unique password of at least 12 characters. Keep the file and password in your school-approved secure storage. The password cannot be recovered.</p>`,'Save locally')}${card(`<div class="notice">Restoring an encrypted backup replaces the current session. Export your current work first if you wish to keep it.</div><div class="button-row" style="margin-top:15px">${button('↑ Restore encrypted backup','restore-backup','btn btn-primary')}${button('✓ Verify downloaded backup','verify-backup','btn')}</div><p class="tiny muted">Verifying decrypts a selected file locally without changing this session. Only files created by this application are accepted. No file contents are transmitted.</p>${backupVerifyStatus?`<div class="notice" role="status">${esc(backupVerifyStatus)}</div>`:''}`,'Continue your work')}</div><div class="grid two">${card(`<p>Share room layouts without student data. This file contains only room names, desk coordinates and accessibility priorities.</p>${button('↓ Export empty room templates','export-rooms','btn')}`,'Share empty layouts')}${card(`<p>No automatic browser storage. Closing or refreshing the tab discards all unexported changes.</p>${button('Clear this session','clear-session','btn btn-danger')}`,'Privacy controls')}</div>`;}
 
@@ -420,8 +479,8 @@ function action(id,attrs={}){try{switch(id){
  case 'new-homework':recordModal('homework');break;case 'new-behaviour':recordModal('behaviour');break;
  case 'edit-categories':categoriesModal();break;
  case 'edit-record':recordModal('',attrs.id);break;
- case 'pick-student':{const all=currentStudents().filter(s=>!pickerExclude||!absent.has(s.id)),asked=data.questioned[classId]||[];const left=all.filter(s=>!asked.includes(s.id)&&s.id!==lastPicked);const pool=left.length?left:all.filter(s=>!asked.includes(s.id));if(!pool.length){notice('Every available pupil has been questioned. Reset the lesson.');break;}const next=pool[Math.floor(Math.random()*pool.length)];lastPicked=next.id;lastPickerState='picked';render();renderProjector();break;}
- case 'reset-picker':case 'reset-lesson':mutation(()=>{data.questioned[classId]=[];});absent.clear();lastPicked='';lastPickerState='';render();renderProjector();break;
+ case 'pick-student':spinPupilPicker();break;
+ case 'reset-picker':case 'reset-lesson':stopPickerSpin();mutation(()=>{data.questioned[classId]=[];});absent.clear();lastPicked='';lastPickerState='';render();renderProjector();break;
  case 'mark-questioned':markPicked('asked');break;
  case 'mark-absent-picked':markPicked('absent');break;
  case 'print-teacher':printMode='teacher';document.body.classList.remove('print-pupil');document.body.classList.add('print-teacher');if(hideIndicators){hideIndicators=false;render();}window.print();break;
@@ -431,7 +490,7 @@ function action(id,attrs={}){try{switch(id){
  case 'restore-backup':$('#backupFile').click();break;
  case 'verify-backup':$('#verifyBackupFile').click();break;
  case 'export-rooms':download(JSON.stringify({format:'SEATING-EMPTY-ROOMS',version:1,rooms:data.rooms},null,2),'room-layouts.json','application/json');notice('Room templates exported without student information.','success');break;
- case 'clear-session':{if(confirm('Clear all pupils, OPPs, notes, records and plans from memory? Export a backup first if needed.')){homeworkSession=null;if(projectorWindow&&!projectorWindow.closed)projectorWindow.close();projectorWindow=null;data=initial();history=[];future=[];dirty=false;classId='';planId='';roomId=data.rooms[0].id;selectedStudent='';selectedSeat='';absent.clear();goto('dashboard');notice('Session cleared.','success');}break;}
+ case 'clear-session':{if(confirm('Clear all pupils, OPPs, notes, records and plans from memory? Export a backup first if needed.')){stopPickerSpin();homeworkSession=null;if(projectorWindow&&!projectorWindow.closed)projectorWindow.close();projectorWindow=null;data=initial();history=[];future=[];dirty=false;classId='';planId='';roomId=data.rooms[0].id;selectedStudent='';selectedSeat='';absent.clear();goto('dashboard');notice('Session cleared.','success');}break;}
  } }catch(e){console.error(e);notice(e.message,'error');}}
 function compareVersions(){const p=currentPlan(),others=data.plans.filter(x=>x.classId===classId&&x.id!==planId);if(!p||!others.length){notice('Create a second version to compare.');return;}openModal('Compare seating plan versions',`<p class="muted">Compare against the current version: <strong>${esc(p.name)}</strong>.</p><label>Other version${choose('other',others.map(x=>({value:x.id,label:x.name})))}</label>`,fd=>{const other=data.plans.find(x=>x.id===fd.get('other'));const reverse=x=>Object.fromEntries(Object.entries(x.assignments).map(([seat,id])=>[id,x.layout.seats.find(s=>s.id===seat)?.label||'Unknown seat']));const a=reverse(p),b=reverse(other);const moved=currentStudents().filter(s=>a[s.id]!==b[s.id]);queueMicrotask(()=>openModal('Version comparison',`<p>${esc(p.name)} compared with ${esc(other.name)}: <strong>${moved.length} pupils moved or unseated</strong>.</p><div class="list-scroll">${moved.map(s=>`<div class="list-card"><strong>${esc(s.name)}</strong><small>${esc(b[s.id]||'Unseated')} → ${esc(a[s.id]||'Unseated')}</small></div>`).join('')||'<p>No changes.</p>'}</div>`,()=>{} ,'Close'));});}
 function startHomeworkSession(){
@@ -470,7 +529,7 @@ function renderProjector(){
   const id=p.assignments[seat.id],name=id?names.get(id):'';
   return `<div class="place ${id&&id===lastPicked?'picked':''}" style="left:${Number(seat.x)}%;top:${Number(seat.y)}%">${esc(name||'Empty')}</div>`;
  }).join('')}</div>`:'<p>No seating plan selected.</p>';
- const who=lastPicked&&names.get(lastPicked)?names.get(lastPicked):'Ready to pick';
+ const who=pickerSpin?.name||(lastPicked&&names.get(lastPicked)?names.get(lastPicked):'Ready to pick');
  const html=`<!doctype html><html lang="en-GB"><head><meta charset="utf-8"><meta name="referrer" content="no-referrer"><title>Classroom projector</title><style>
  body{margin:0;background:#101b2b;color:#fff;font:19px system-ui,sans-serif;padding:22px}
  h1{font-size:27px;margin:0 0 10px}.heading{display:flex;justify-content:space-between;align-items:center;gap:15px}
