@@ -168,6 +168,18 @@ export function defaultRoom(name='Standard 2-4-2') {
 }
 export function buildPreset(kind,name) {
  if(kind==='242')return defaultRoom(name||'Standard 2-4-2');
+ if(kind==='it3'){
+  // IT3 horseshoe: 8 across the upper wall, 7 down each side,
+  // and 12 at the central island (six on each long edge). 34 total.
+  const seats=[];
+  const add=(x,y,group)=>seats.push({id:uid(),label:String(seats.length+1),x,y,rotation:0,priority:'normal',group});
+  [15,25,35,45,55,65,75,85].forEach(x=>add(x,19,'IT3-Top'));
+  [30,40,50,60,70,80,90].forEach(y=>add(8,y,'IT3-Left'));
+  [30,40,50,60,70,80,90].forEach(y=>add(92,y,'IT3-Right'));
+  [26,36,46,56,66,76].forEach(x=>add(x,40,'IT3-Island-North'));
+  [26,36,46,56,66,76].forEach(x=>add(x,65,'IT3-Island-South'));
+  return {id:uid(),name:name||'IT3',kind:'it3',seats,teacher:{x:89,y:8},board:'front'};
+ }
  const seats=[];const add=(x,y,row,col,group)=>seats.push({id:uid(),label:String(seats.length+1),x,y,rotation:0,priority:'normal',group});
  if(kind==='pairs')for(let row=0;row<4;row++)for(let pair=0;pair<4;pair++)for(let col=0;col<2;col++)add(9+pair*23+col*9,24+row*18,row,col,'R'+row+'P'+pair);
  if(kind==='groups')for(let r=0;r<2;r++)for(let c=0;c<4;c++)for(let i=0;i<4;i++)add(12+c*23+(i%2)*9,32+r*36+Math.floor(i/2)*10,r,i,'G'+r+c);
@@ -176,7 +188,7 @@ export function buildPreset(kind,name) {
 }
 export function newPlan(classId,room,label) {
  return {id:uid(),classId,roomId:room.id,name:label||'Autumn 1',created:new Date().toISOString(),
-  layout:clone({seats:room.seats,teacher:room.teacher,board:room.board}),assignments:{},locks:[],
+  layout:clone({kind:room.kind||'',seats:room.seats,teacher:room.teacher,board:room.board}),assignments:{},locks:[],
   rules:[],notes:''};
 }
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
