@@ -2,6 +2,17 @@
 
 A fully client-side seating plan and teaching toolkit designed for static hosting on GitHub Pages. No pupil files or example personal data are included.
 
+## Start-up and class setup wizard
+
+Every **fresh page load** now starts with a prominent choice between **Restore my backup** and **Set up my classes**. The site never remembers whether it was visited before and does not automatically retain pupil data.
+
+1. **Restore my backup:** select a previously downloaded encrypted `.seatingplan` file and enter its original password. A successful restore opens the workspace with your existing classes and records. It does not prompt you to reimport anything.
+2. **Set up my classes:** import an Edulink CSV, review pupil matches and confirm the changes. The wizard then shows the classes imported and offers **Import next class** or **I'm finished · Create backup**. Continue for as many classes as required. If a CSV contains multiple classes, all correctly mapped groups appear in the list.
+3. **I'm finished:** the tool opens the Backup & restore page and immediately presents the encrypted backup password form. Creating a backup **does not prove it has been saved successfully**, so select **Verify downloaded backup** afterwards and test that the file matches the current session.
+4. **Continue without the wizard / Exit guided setup:** staff can access all features without being forced into importing a file. The normal dashboard also has a **Guided setup** action to return later.
+
+There is no persistent onboarding state, server account, login, browser storage or automatic backup. Cancelling an import or backup does **not** delete current work. Closing or refreshing the browser without a verified, safely stored encrypted backup risks permanent loss of current-session changes.
+
 ## Data protection and deployment
 
 * Edulink CSVs, Word DOCX OPPs and ZIP bundles are parsed by JavaScript in the teacher's own browser. Files are not uploaded.
