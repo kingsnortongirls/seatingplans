@@ -80,6 +80,7 @@ async def main():
   assert await page.get_by_text('Unit 1 work').count()==1
   await page.locator('#nav [data-view=tools]').click()
   await page.get_by_role('button',name='⚄ Pick a pupil').click()
+  await page.locator('.picker-stage:not(.is-spinning) [data-picker-display]').wait_for(timeout=10000)
   await page.locator('#groupForm button[type=submit]').click()
   print('group cards',await page.locator('.group-result').count())
   assert await page.locator('.group-result').count()>=4
