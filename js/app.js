@@ -1,8 +1,8 @@
-import {uid,clone,clean,esc,short,nameKey,isoDate,readEdulink,buildEdulinkReview,readOppFiles,defaultRoom,buildPreset,newPlan,placeStudent,autoSeat,auditRules,issuesFor,accessReport,gradeGap,oppSeatingHints,makeGroups,encryptBackup,decryptBackup,validateBackup} from './core.js';
+import {uid,clone,clean,esc,short,nameKey,isoDate,readEdulink,buildEdulinkReview,readOppFiles,defaultRoom,buildPreset,newPlan,placeStudent,autoSeat,auditRules,issuesFor,accessReport,gradeGap,gradeValue,assessmentGap,assessmentHistory,classQuality,oppSeatingHints,makeGroups,encryptBackup,decryptBackup,validateBackup} from './core.js';
 
 // Everything below exists in memory only. No localStorage, cookies, IndexedDB, API calls or telemetry.
-const initial=()=>({schema:1,classes:[],students:[],rooms:[defaultRoom(),buildPreset('it3','IT3'),buildPreset('it2','IT2')],plans:[],records:[],questioned:{},pendingOPPs:[],categories:['Late to lesson','Homework not submitted','Truancy','Lack of effort','Disrespect','Missing equipment','Disruption','Not following instructions','Incomplete classwork','Other']});
-let data=initial(),view='dashboard',classId='',roomId=data.rooms[0].id,planId='',selectedStudent='',selectedSeat='',selectedRecord='',dirty=false,history=[],future=[],profileTab='support',searchTerm='',recordFilter='all',printMode='teacher',groupResult=[],lastPicked='',pickerExclude=true,absent=new Set(),layoutMode='move',pendingOPPs=[],oppSummary='',importSummary='',dragState=null,homeworkSession=null,projectorWindow=null,backupVerifyStatus='';
+const initial=()=>({schema:1,classes:[],students:[],rooms:[defaultRoom(),buildPreset('it3','IT3'),buildPreset('it2','IT2')],plans:[],records:[],assessments:[],questioned:{},questioningLog:[],yearRollovers:[],pendingOPPs:[],categories:['Late to lesson','Homework not submitted','Truancy','Lack of effort','Disrespect','Missing equipment','Disruption','Not following instructions','Incomplete classwork','Other']});
+let data=initial(),view='dashboard',classId='',roomId=data.rooms[0].id,planId='',selectedStudent='',selectedSeat='',selectedRecord='',dirty=false,history=[],future=[],profileTab='support',searchTerm='',recordFilter='all',printMode='teacher',groupResult=[],lastPicked='',pickerExclude=true,absent=new Set(),layoutMode='move',pendingOPPs=[],oppSummary='',importSummary='',dragState=null,homeworkSession=null,projectorWindow=null,backupVerifyStatus='',hideIndicators=false,privacyLocked=false,lessonTimer={remaining:300,running:false,endsAt:0},lessonTimerHandle=null,lastPickerState='',contextLongPress=null;
 const $=sel=>document.querySelector(sel), $$=sel=>[...document.querySelectorAll(sel)];
 const currentClass=()=>data.classes.find(c=>c.id===classId);
 const currentRoom=()=>data.rooms.find(r=>r.id===roomId)||data.rooms[0];
@@ -24,7 +24,7 @@ function notice(message,type=''){const div=document.createElement('div');div.cla
 function mutation(fn){backupVerifyStatus='';history.push(clone(data));if(history.length>60)history.shift();future=[];fn();dirty=true;render();}
 function undo(){if(!history.length)return;backupVerifyStatus='';future.push(clone(data));data=history.pop();reconcile();dirty=true;render();notice('Change undone.');}
 function redo(){if(!future.length)return;backupVerifyStatus='';history.push(clone(data));data=future.pop();reconcile();dirty=true;render();notice('Change restored.');}
-function reconcile(){if(!Array.isArray(data.pendingOPPs))data.pendingOPPs=[];if(!data.rooms.length)data.rooms=[defaultRoom()];if(!data.rooms.some(r=>r.id===roomId))roomId=data.rooms[0].id;if(!data.classes.some(c=>c.id===classId))classId=data.classes[0]?.id||'';if(!data.plans.some(p=>p.id===planId&&p.classId===classId))planId=data.plans.find(p=>p.classId===classId)?.id||'';}
+function reconcile(){if(!Array.isArray(data.assessments))data.assessments=[];if(!Array.isArray(data.questioningLog))data.questioningLog=[];if(!Array.isArray(data.yearRollovers))data.yearRollovers=[];if(!Array.isArray(data.pendingOPPs))data.pendingOPPs=[];if(!data.rooms.length)data.rooms=[defaultRoom()];if(!data.rooms.some(r=>r.id===roomId))roomId=data.rooms[0].id;if(!data.classes.some(c=>c.id===classId))classId=data.classes[0]?.id||'';if(!data.plans.some(p=>p.id===planId&&p.classId===classId))planId=data.plans.find(p=>p.classId===classId)?.id||'';}
 function goto(next){view=next;render();window.scrollTo({top:0,behavior:'instant'});}
 function setClass(id){if(homeworkSession&&homeworkSession.classId!==id){if(!confirm('Cancel unfinished homework marking and switch classes? No homework records have been written.'))return;homeworkSession=null;}classId=id;planId=data.plans.find(p=>p.classId===id)?.id||'';selectedStudent='';selectedSeat='';absent.clear();groupResult=[];lastPicked='';}
 function render(){reconcile();$$('#nav [data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view===view));$('#breadcrumbs').textContent=({dashboard:'Your workspace',seating:'Seating plans',rooms:'Classroom designer',profiles:'Pupil profiles',records:'Teacher records',tools:'Teaching tools',backup:'Backup & restore'})[view];$('#saveIndicator').textContent=dirty?'● Changes not backed up':'Session only';$('#undoButton').disabled=history.length===0;$('#redoButton').disabled=future.length===0;
@@ -337,10 +337,14 @@ function reviewEdulinkImport(incoming){
     if(decision==='skip')continue;
     let cls=data.classes.find(c=>c.name.toLowerCase()===item.group.toLowerCase());
     if(!cls){cls={id:uid(),name:item.group};data.classes.push(cls);}
-    if(decision==='new'){data.students.push({...item.incoming,id:uid(),classId:cls.id,active:true,opp:null,notes:''});added++;}
+    const options=Object.keys(item.incoming.gradeColumns||{});
+    cls.assessmentHeaders=[...new Set([...(cls.assessmentHeaders||[]),...options])].slice(0,45);
+    if(!cls.selectedAssessment&&cls.assessmentHeaders.length)cls.selectedAssessment=cls.assessmentHeaders[0];
+    const imported={...item.incoming,current:cls.selectedAssessment?item.incoming.gradeColumns?.[cls.selectedAssessment]||item.incoming.current:item.incoming.current};
+    if(decision==='new'){data.students.push({...imported,id:uid(),classId:cls.id,active:true,opp:null,notes:'',strategies:'',pupilVoice:'',reviewedDate:''});added++;}
     else{
      const old=data.students.find(s=>s.id===decision.slice(6));
-     Object.assign(old,item.incoming,{id:old.id,classId:cls.id,active:true,externalId:item.incoming.externalId||old.externalId||'',opp:old.opp,notes:old.notes});
+     Object.assign(old,imported,{id:old.id,classId:cls.id,active:true,externalId:item.incoming.externalId||old.externalId||'',opp:old.opp,notes:old.notes,strategies:old.strategies||'',pupilVoice:old.pupilVoice||'',reviewedDate:old.reviewedDate||''});
      updated++;
     }
     if(!classId)classId=cls.id;
