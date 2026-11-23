@@ -298,3 +298,49 @@
  .onboarding-footer .btn{width:100%}
 }
 @media print{.onboarding-hero,.onboarding-grid,.onboarding-footer,.onboarding-step{display:none!important}}
+
+/* Guided class setup: focus the next stage on locally imported One Page Profiles. */
+.onboarding-opp-step{
+ scroll-margin-top:96px;
+ padding:clamp(18px,3vw,29px);
+ margin:22px 0;border:2px solid #2c76b6;border-radius:17px;
+ background:#f5faff;box-shadow:0 6px 24px rgba(28,89,149,.1);
+ outline-offset:5px;
+}
+.onboarding-opp-step h2{font-size:clamp(20px,2.6vw,26px);margin:9px 0 12px;color:#1b456a}
+.onboarding-opp-step>p{font-size:14px;color:#435e74;margin:0 0 13px;line-height:1.5}
+.onboarding-folder-path{
+ display:flex;align-items:center;flex-wrap:wrap;gap:7px 10px;
+ background:#e7f1fc;border:1px solid #c8ddf1;border-radius:12px;
+ color:#184d78;padding:13px 15px;margin:12px 0 19px;
+ font-size:13px;line-height:1.5;overflow-wrap:anywhere;
+}
+.onboarding-folder-path strong{font-weight:750}
+.onboarding-folder-path span{color:#6991ad}
+.onboarding-file-types{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:12px;margin:0 0 18px;
+}
+.onboarding-file-types>div{padding:14px 15px;border-radius:12px;border:1px solid #d0deec;background:#fff}
+.onboarding-file-types strong{display:block;font-size:14px;color:#1e4564;margin-bottom:6px}
+.onboarding-file-types small{display:block;font-size:12px;line-height:1.5;color:#536b7e}
+.onboarding-file-drop{
+ display:flex;align-items:center;flex-direction:column;gap:8px;
+ background:#fff;border:2px dashed #7ea8cc;border-radius:15px;
+ padding:23px 16px;text-align:center;min-width:0;
+}
+.onboarding-file-drop p{font-size:14px;color:#314e65;line-height:1.5;margin:0}
+.onboarding-file-drop small{font-size:11px;color:#607a8e;max-width:480px;line-height:1.5}
+.onboarding-file-drop .onboarding-symbol{margin:0}
+.onboarding-file-drop .onboarding-main-action{width:min(100%,400px);min-height:49px;white-space:normal;margin:6px 0}
+.onboarding-file-drop:focus-within{border-color:#276ac0}
+.onboarding-opp-actions{display:flex;justify-content:flex-end;margin-top:16px}
+.onboarding-grid-next{scroll-margin-top:96px}
+@media(max-width:740px){
+ .onboarding-file-types{grid-template-columns:1fr}
+ .onboarding-opp-step{padding:17px 14px}
+ .onboarding-folder-path{gap:5px 8px}
+ .onboarding-file-drop{padding:19px 10px}
+ .onboarding-opp-actions .btn{width:100%}
+}
+@media print{.onboarding-opp-step{display:none!important}}
