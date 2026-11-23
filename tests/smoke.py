@@ -33,7 +33,19 @@ async def main():
   assert await page.get_by_role('button',name='Choose ZIP or Word OPP files').count()==1
   assert await page.get_by_text('Year 7',exact=False).count()>=1
   assert await page.get_by_text('Inclusion Matters',exact=True).count()>=1
-  await page.get_by_role('button',name='Skip OPP import for now').click()
+  # Synthetic year-group ZIP containing a DOCX OPP, with no actual school data.
+  word_ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main'
+  xml=f'<w:document xmlns:w="{word_ns}"><w:body><w:p><w:r><w:t>Pupil Name: Pupil 1</w:t></w:r></w:p><w:p><w:r><w:t>Seat at front of classroom</w:t></w:r></w:p></w:body></w:document>'
+  embedded=io.BytesIO()
+  with zipfile.ZipFile(embedded,'w',compression=zipfile.ZIP_DEFLATED) as doc:
+   doc.writestr('word/document.xml',xml)
+  year_zip=ROOT/'tests'/'synthetic-year7-opps.zip'
+  with zipfile.ZipFile(year_zip,'w',compression=zipfile.ZIP_DEFLATED) as bundle:
+   bundle.writestr('Year 7/Pupil 1.docx',embedded.getvalue())
+  await page.locator('#oppFiles').set_input_files(str(year_zip))
+  await page.get_by_role('button',name='Import next class').wait_for(timeout=10000)
+  assert 'Matched 1 OPP(s)' in await page.locator('main').inner_text()
+  year_zip.unlink(missing_ok=True)
   assert await page.get_by_role('button',name='Import next class').count()==1
   await page.get_by_role('button',name="I'm finished · Create backup").click()
   # Some local set_content() contexts are not secure, so subtle crypto may be
