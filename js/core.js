@@ -180,6 +180,25 @@ export function buildPreset(kind,name) {
   [26,36,46,56,66,76].forEach(x=>add(x,65,'IT3-Island-South'));
   return {id:uid(),name:name||'IT3',kind:'it3',seats,teacher:{x:89,y:8},board:'front'};
  }
+ if(kind==='it2'){
+  // IT2: 33 usable positions from the classroom photograph. Empty chairs
+  // are still real seats and can receive a pupil later.
+  // 8 left (one initially empty), 7 right, 10 at the 2x5 island
+  // (one initially empty), plus 2x2 upper and 2x2 lower desks.
+  const seats=[];
+  const add=(x,y,group)=>seats.push({id:uid(),label:String(seats.length+1),x,y,rotation:0,priority:'normal',group});
+  [13,24,35,46,57,68,79,90].forEach(y=>add(8,y,'IT2-Left'));
+  [19,30,41,52,63,74,85].forEach(y=>add(92,y,'IT2-Right'));
+  [29,41,53,65,77].forEach((y,row)=>{
+    add(48,y,'IT2-Island-'+(row+1));
+    add(59,y,'IT2-Island-'+(row+1));
+  });
+  [28,38].forEach(x=>add(x,13,'IT2-Upper-Left'));
+  [72,82].forEach(x=>add(x,13,'IT2-Upper-Right'));
+  [28,38].forEach(x=>add(x,90,'IT2-Lower-Left'));
+  [72,82].forEach(x=>add(x,90,'IT2-Lower-Right'));
+  return {id:uid(),name:name||'IT2',kind:'it2',seats,teacher:{x:55,y:86},board:'back'};
+ }
  const seats=[];const add=(x,y,row,col,group)=>seats.push({id:uid(),label:String(seats.length+1),x,y,rotation:0,priority:'normal',group});
  if(kind==='pairs')for(let row=0;row<4;row++)for(let pair=0;pair<4;pair++)for(let col=0;col<2;col++)add(9+pair*23+col*9,24+row*18,row,col,'R'+row+'P'+pair);
  if(kind==='groups')for(let r=0;r<2;r++)for(let c=0;c<4;c++)for(let i=0;i<4;i++)add(12+c*23+(i%2)*9,32+r*36+Math.floor(i/2)*10,r,i,'G'+r+c);
