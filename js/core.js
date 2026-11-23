@@ -568,7 +568,7 @@ export function makeGroups(students,plan,{size=4,mode='random'}={}) {
 const b64=bytes=>{let out='';for(let i=0;i<bytes.length;i+=8192)out+=String.fromCharCode(...bytes.subarray(i,i+8192));return btoa(out);};
 const from64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 export async function encryptBackup(data,password) {
- if(password.length<12)throw new Error('Use a backup password of at least 12 characters.');
+ if(typeof password!=='string'||password.length<8)throw new Error('Use a backup password of at least 8 characters.');
  const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
  const raw=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveKey']);
  const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:310000,hash:'SHA-256'},raw,{name:'AES-GCM',length:256},false,['encrypt']);
