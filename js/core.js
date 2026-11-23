@@ -389,7 +389,7 @@ export function oppSeatingHints(opp){
    for(const text of segments){
     if(text.length>600)continue;
     // Do not reinterpret explicit negations as positive seating preferences.
-    if(/\b(?:do not|don't|must not|should not|never|no need to)\s+(?:sit|seat|be seated)\b/i.test(text))continue;
+    if(/\b(?:do not|don't|must not|should not|shouldn't|never|no need to|not to|prefer not to|does not want to|doesn't want to|avoid)\s+(?:be\s+)?(?:sit|seat|sitting|seated|seating)\b/i.test(text))continue;
     const found=conditions.filter(item=>item.patterns.some(regex=>regex.test(text)));
     for(const spec of found){
      const key=spec.mode;
