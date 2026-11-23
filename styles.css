@@ -23,6 +23,10 @@
  content:'';position:absolute;inset:0;
  background:linear-gradient(90deg,transparent 49.8%,#95b5df 50%,transparent 50.2%);
 }
+.canvas.it3 .board{
+ top:auto;bottom:1%;left:36%;width:28%;height:6%;
+ font-size:8px;letter-spacing:.3px;
+}
 .canvas.it3 .teacher-desk{z-index:4;max-width:12%;min-height:25px}
 @media(max-width:740px){
  .canvas.it3{min-height:430px}
