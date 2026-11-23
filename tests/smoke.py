@@ -67,6 +67,13 @@ async def main():
   await page.get_by_role('button',name='Apply seating plan').click()
   print('seated',await page.locator('.seat:not(.unassigned)').count())
   assert await page.locator('.seat:not(.unassigned)').count()==16
+  # Tapping a seated pupil shows a concise private support modal without
+  # inadvertently rearranging anyone. Full OPP is one action away.
+  await page.locator('.seat:not(.unassigned)').first.click()
+  assert await page.locator('.pupil-summary-modal').count()==1
+  assert await page.get_by_role('button',name='Full OPP / profile').count()==1
+  await page.locator('.summary-close').click()
+  assert await page.locator('.seat:not(.unassigned)').count()==16
   # Moving a seated pupil onto another occupied seat must swap, not unseat.
   before=await page.locator('.seat:not(.unassigned) strong').all_inner_texts()
   first=before[0];second=next(x for x in before if x!=first)
