@@ -144,7 +144,7 @@ function dashboard(){const pupils=currentStudents();return heading('Welcome to S
  `<div class="grid two">${card(`<div class="dropzone" data-action="import-csv"><div class="large-icon">↑</div><strong>Import an Edulink marksheet</strong><small>CSV file • create or refresh classes • local processing</small></div><p class="muted tiny">${esc(importSummary||'Importing a newer marksheet updates matching pupils while preserving their records and seating.')}</p>`,'1. Add your classes')}${card(`<div class="dropzone" data-action="import-opp"><div class="large-icon">▤</div><strong>Drop in Word OPPs</strong><small>Select multiple DOCX files or a ZIP containing DOCX files</small></div><p class="muted tiny">${esc(oppSummary||'OPPs are matched by pupil name. Unmatched records are shown for review, never guessed.')}</p>`,'2. Add pupil support')}</div>`+
  `<div class="grid two">${card(data.classes.length?data.classes.map(c=>`<div class="list-card"><div><strong>${esc(c.name)}</strong><small>${data.students.filter(s=>s.classId===c.id).length} pupils · ${data.plans.filter(p=>p.classId===c.id).length} plan version(s)</small></div>${button('Open','open-class','btn btn-small',`data-id="${esc(c.id)}"`)}</div>`).join(''):empty('No classes imported','Use the Edulink marksheet importer above. No school data is stored on the site.'),'Your classes')}${card(`<p>Use the standard four-row, 2-4-2 classroom, or create custom layouts.</p><div class="list-card"><div><strong>Room designer</strong><small>Move desks, mark accessible seats and edit classroom templates</small></div>${button('Design','go-rooms','btn btn-small')}</div><div class="list-card"><div><strong>Backups</strong><small>Encrypted local export and restore, including all versions</small></div>${button('Open','go-backup','btn btn-small')}</div>`,'Next steps')}</div>`;
 }
-function seatMarkup(layout,assignment={},opts={}){const showPrivate=opts.teacher!==false&&!hideIndicators&&!privacyLocked;return `<div class="canvas ${layout.kind==='it3'?'it3':layout.kind==='it2'?'it2':''}" id="roomCanvas" data-mode="${opts.mode||'seating'}"><div class="board">WHITEBOARD / FRONT</div><div class="teacher-desk" style="left:${layout.teacher?.x??78}%;top:${layout.teacher?.y??7}%" data-desk="teacher">TEACHER DESK</div>${layout.kind==='it3'?'<div class="it3-island" aria-hidden="true"></div>':layout.kind==='it2'?'<div class="it2-table it2-left"></div><div class="it2-table it2-right"></div><div class="it2-table it2-middle"></div><div class="it2-table it2-upper-left"></div><div class="it2-table it2-upper-right"></div><div class="it2-table it2-lower-left"></div><div class="it2-table it2-lower-right"></div>':''}${layout.seats.map(seat=>{const s=student(assignment[seat.id]),grade=s&&showPrivate?gradeGap(s):null,locked=(currentPlan()?.locks||[]).includes(seat.id),selected=selectedSeat===seat.id,hwMissing=!!(s&&homeworkSession?.classId===classId&&homeworkSession.missing.includes(s.id));return `<button type="button" class="seat ${selected?'selected':''} ${!s?'unassigned':''} ${locked?'locked':''} ${hwMissing?'homework-missing':''} ${grade?'grade-'+grade.band:''} ${s&&s.id===lastPicked?'picked-pupil':''}" data-seat="${esc(seat.id)}" data-priority="${esc(seat.priority||'normal')}" style="left:${Number(seat.x)}%;top:${Number(seat.y)}%;rotate:${Number(seat.rotation)||0}deg" title="${s?esc(s.name)+' · View pupil support':opts.mode==='rooms'?'Edit seat '+esc(seat.label):'Empty seat'}" aria-label="${s?esc(s.name)+' · View pupil support summary':opts.mode==='rooms'?'Edit seat '+esc(seat.label):'Empty seat'}"><strong>${s?esc(short(s.name,22)):opts.mode==='rooms'?'Seat '+esc(seat.label):'+'}</strong>${s?`${showPrivate?seatTagMarkup(s):''}<small class="pupil-private seat-meta">${showPrivate?esc(gradeSummary(s)):''}</small>`:opts.mode==='rooms'?`<small>${esc(seat.priority)}</small>`:''}</button>`}).join('')}</div>`;}
+function seatMarkup(layout,assignment={},opts={}){const showPrivate=opts.teacher!==false&&!hideIndicators&&!privacyLocked;return `<div class="canvas ${layout.kind==='it3'?'it3':layout.kind==='it2'?'it2':''}" id="roomCanvas" data-mode="${opts.mode||'seating'}"><div class="board">WHITEBOARD / FRONT</div><div class="teacher-desk" style="left:${layout.teacher?.x??78}%;top:${layout.teacher?.y??7}%" data-desk="teacher">TEACHER DESK</div>${layout.kind==='it3'?'<div class="it3-island" aria-hidden="true"></div>':layout.kind==='it2'?'<div class="it2-table it2-left"></div><div class="it2-table it2-right"></div><div class="it2-table it2-middle"></div><div class="it2-table it2-upper-left"></div><div class="it2-table it2-upper-right"></div><div class="it2-table it2-lower-left"></div><div class="it2-table it2-lower-right"></div>':''}${layout.seats.map(seat=>{const s=student(assignment[seat.id]),grade=s&&showPrivate?gradeGap(s):null,locked=(currentPlan()?.locks||[]).includes(seat.id),selected=selectedSeat===seat.id,hwMissing=!!(s&&homeworkSession?.classId===classId&&homeworkSession.missing.includes(s.id));return `<button type="button" class="seat ${selected?'selected':''} ${seatMoveSource===seat.id?'move-source':''} ${!s?'unassigned':''} ${locked?'locked':''} ${hwMissing?'homework-missing':''} ${grade?'grade-'+grade.band:''} ${s&&s.id===lastPicked?'picked-pupil':''}" data-seat="${esc(seat.id)}" data-priority="${esc(seat.priority||'normal')}" style="left:${Number(seat.x)}%;top:${Number(seat.y)}%;rotate:${Number(seat.rotation)||0}deg" title="${s?esc(s.name)+' · View pupil support':opts.mode==='rooms'?'Edit seat '+esc(seat.label):'Empty seat'}" aria-label="${s?esc(s.name)+' · View pupil support summary':opts.mode==='rooms'?'Edit seat '+esc(seat.label):'Empty seat'}"><strong>${s?esc(short(s.name,22)):opts.mode==='rooms'?'Seat '+esc(seat.label):'+'}</strong>${s?`${showPrivate?seatTagMarkup(s):''}<small class="pupil-private seat-meta">${showPrivate?esc(gradeSummary(s)):''}</small>`:opts.mode==='rooms'?`<small>${esc(seat.priority)}</small>`:''}</button>`}).join('')}</div>`;}
 function gradeSummary(s){const latest=assessmentHistory(data.assessments,s.id).slice(-1)[0];if(!s.target&&!s.current&&!latest)return '';const t=clean(s.target),c=clean(s.current),v=gradeGap(s),d=latest?assessmentGap(latest.grade,latest.target||s.target):null;return `T:${t||'?'} · C:${c||'?'}${v?' ('+(v.gap>0?'+':'')+v.gap+')':''}${latest?' · L:'+short(latest.grade,4)+(d===null?'':' ('+(d>0?'+':'')+d+')'):''}`;}
 function seatTagMarkup(s){
  // SEND and PP remain visible even on compact IT2/IT3 seating cards.
@@ -165,7 +165,7 @@ function seatTagMarkup(s){
 function badgesForSeat(s){return [s.pp&&/yes|true|^y$|^1$|^pp$/i.test(s.pp)?'PP':'',s.send&&!/^(n|no|none)$/i.test(s.send)?'SEND':'',s.prior?'PA '+s.prior.charAt(0).toUpperCase():'',s.more&&/^(yes|y|true|1)$/i.test(s.more)?'More Able':'',s.internalExternal?'KS5 '+short(s.internalExternal,12):'',s.readingAge?'RA '+short(s.readingAge,6):'',s.target?'T '+short(s.target,3):'',s.current?'C '+short(s.current,3):''].filter(Boolean).join(' · ');}
 function seating(){const p=currentPlan(),list=currentStudents(),access=p?accessReport(p,list):null,audit=p?auditRules(p,list):null,oppToReview=p?list.reduce((total,s)=>total+oppSeatingHints(s.opp).filter(h=>!h.reviewOnly&&!p.rules.some(r=>r.type==='priority'&&r.a===s.id&&r.mode===h.mode)).length,0):0;const plans=data.plans.filter(x=>x.classId===classId);return heading('Seating plans','Arrange pupils, respect seating priorities and compare versions.',button('+ New version','new-version','btn btn-primary')+button('Print teacher','print-teacher','btn')+button('Print pupil','print-pupil','btn')+button('Projector view','projector-view','btn')+button(hideIndicators?'Show indicators':'Hide indicators','toggle-indicators','btn'))+
  (!data.classes.length?card(empty('Start with Edulink','Import a marksheet from the dashboard first.')):`<div class="board-tools no-print"><label>Class${classChoices()}</label><label>Plan version${planChoices()}</label>${button('Duplicate','duplicate-plan','btn btn-small')}${button('Rename','rename-plan','btn btn-small')}${button('Compare','compare-plans','btn btn-small')}${button('Delete version','delete-plan','btn btn-small btn-danger')}</div>`+
- (!p?card(empty('No plan for this class','Select New version to start with a room template.')):`<div class="print-page-title">${esc(currentClass()?.name)} · ${esc(p.name)} · ${esc(fmtDate(isoDate()))}</div><div class="layout-split"><section class="card stage-card">${homeworkSession?.classId===classId?`<div class="callout no-print" style="margin-bottom:14px"><strong>Mark missing homework: ${esc(homeworkSession.assignment)}</strong><p class="tiny">Due ${esc(fmtDate(homeworkSession.dueDate))}. Tap a seated pupil to mark or unmark missing homework. You can also use the class list. No records are written until you confirm.</p><p><strong>${homeworkSession.missing.length} selected as missing</strong></p><div class="button-row">${button('Save missing records','finish-homework','btn btn-primary')}${button('Cancel marking','cancel-homework','btn')}</div></div>`:''}${seatMarkup(p.layout,p.assignments)}<div class="legend-line no-print" style="margin-top:12px"><span><i class="legend-swatch access"></i>Easy access</span><span><i class="legend-swatch preferred"></i>Preferred</span><span><i class="legend-swatch avoid"></i>Avoid</span><span>Tap a seated pupil to view their support summary. Select a name to place them.</span></div><div class="grade-key no-print"><span><i style="--swatch:#c33737"></i>2+ below</span><span><i style="--swatch:#e9a23b"></i>1 below</span><span><i style="--swatch:#2c9d58"></i>On target</span><span><i style="--swatch:#2d87c4"></i>1 above</span><span><i style="--swatch:#6855b5"></i>2+ above</span><span>GCSE 9–1 / A-level A*–U</span></div><div class="button-row no-print" style="margin-top:14px">${homeworkSession?'':button('⚄ Generate seats','auto-seat','btn btn-primary')}${homeworkSession?'':button('Mark homework','start-homework','btn btn-primary')}${button('Seating rules','seating-rules','btn')}${button('OPP seating prompts'+(oppToReview?' ('+oppToReview+')':''),'opp-seating-prompts','btn')}${button('Plan notes','plan-notes','btn')}${button('SEND / PP accessible seats','group-access-preference','btn')}${button('Use updated room','sync-room','btn')}${button('Restore previous seating','restore-pupils','btn')}${button('Clear all seats','clear-seats','btn')}</div>${p.notes?`<div class="notice no-print" style="margin-top:12px"><strong>Teacher plan notes:</strong> ${esc(short(p.notes,300))}</div>`:''}${ruleAuditMarkup(audit)}${access?.enabled?`<div class="callout no-print ${access.shortfall?'warn':''}" style="margin-top:12px"><strong>Accessible seating preference:</strong> ${access.selected.send?'SEND':''}${access.selected.send&&access.selected.pp?' and ':''}${access.selected.pp?'PP':''}. <strong>${access.eligible}</strong> eligible pupil(s), <strong>${access.capacity}</strong> marked accessible seat(s).${access.shortfall?`<p><strong>Capacity warning:</strong> At least ${access.shortfall} pupil(s) cannot be placed in an accessible seat with the current locked-seat arrangements. You can add more accessible seats or review priorities.</p>`:''}${Object.values(p.assignments).length&&access.unmet.length?`<p><strong>Currently outside accessible seats:</strong> ${access.unmet.map(s=>esc(s.name)).join(', ')}.</p>`:''}</div>`:''}</section><aside class="card print-hide"><h2>Class register <span class="muted tiny">(${list.length})</span></h2><input aria-label="Filter pupils" id="pupilSearch" placeholder="Find a pupil…" value="${esc(searchTerm)}"><div class="list-scroll" id="pupilRoster">${roster(list,p)}</div><hr class="divider">${selectedSeat?seatControls(p):'<p class="muted tiny">Select a seat to lock, clear, or open pupil details.</p>'}</aside></div>`));
+ (!p?card(empty('No plan for this class','Select New version to start with a room template.')):`<div class="print-page-title">${esc(currentClass()?.name)} · ${esc(p.name)} · ${esc(fmtDate(isoDate()))}</div><div class="layout-split"><section class="card stage-card">${seatMoveSource?`<div class="notice seat-move-notice no-print"><strong>Move or swap:</strong> Tap a destination seat to place the selected pupil. Tap the source seat to cancel. ${button('Cancel move','cancel-seat-move','btn btn-small')}</div>`:''}${homeworkSession?.classId===classId?`<div class="callout no-print" style="margin-bottom:14px"><strong>Mark missing homework: ${esc(homeworkSession.assignment)}</strong><p class="tiny">Due ${esc(fmtDate(homeworkSession.dueDate))}. Tap a seated pupil to mark or unmark missing homework. You can also use the class list. No records are written until you confirm.</p><p><strong>${homeworkSession.missing.length} selected as missing</strong></p><div class="button-row">${button('Save missing records','finish-homework','btn btn-primary')}${button('Cancel marking','cancel-homework','btn')}</div></div>`:''}${seatMarkup(p.layout,p.assignments)}<div class="legend-line no-print" style="margin-top:12px"><span><i class="legend-swatch access"></i>Easy access</span><span><i class="legend-swatch preferred"></i>Preferred</span><span><i class="legend-swatch avoid"></i>Avoid</span><span>Tap a seated pupil to view their support summary. Select a name to place them.</span></div><div class="grade-key no-print"><span><i style="--swatch:#c33737"></i>2+ below</span><span><i style="--swatch:#e9a23b"></i>1 below</span><span><i style="--swatch:#2c9d58"></i>On target</span><span><i style="--swatch:#2d87c4"></i>1 above</span><span><i style="--swatch:#6855b5"></i>2+ above</span><span>GCSE 9–1 / A-level A*–U</span></div><div class="button-row no-print" style="margin-top:14px">${homeworkSession?'':button('⚄ Generate seats','auto-seat','btn btn-primary')}${homeworkSession?'':button('Mark homework','start-homework','btn btn-primary')}${button('Seating rules','seating-rules','btn')}${button('OPP seating prompts'+(oppToReview?' ('+oppToReview+')':''),'opp-seating-prompts','btn')}${button('Plan notes','plan-notes','btn')}${button('SEND / PP accessible seats','group-access-preference','btn')}${button('Use updated room','sync-room','btn')}${button('Restore previous seating','restore-pupils','btn')}${button('Clear all seats','clear-seats','btn')}</div>${p.notes?`<div class="notice no-print" style="margin-top:12px"><strong>Teacher plan notes:</strong> ${esc(short(p.notes,300))}</div>`:''}${ruleAuditMarkup(audit)}${access?.enabled?`<div class="callout no-print ${access.shortfall?'warn':''}" style="margin-top:12px"><strong>Accessible seating preference:</strong> ${access.selected.send?'SEND':''}${access.selected.send&&access.selected.pp?' and ':''}${access.selected.pp?'PP':''}. <strong>${access.eligible}</strong> eligible pupil(s), <strong>${access.capacity}</strong> marked accessible seat(s).${access.shortfall?`<p><strong>Capacity warning:</strong> At least ${access.shortfall} pupil(s) cannot be placed in an accessible seat with the current locked-seat arrangements. You can add more accessible seats or review priorities.</p>`:''}${Object.values(p.assignments).length&&access.unmet.length?`<p><strong>Currently outside accessible seats:</strong> ${access.unmet.map(s=>esc(s.name)).join(', ')}.</p>`:''}</div>`:''}</section><aside class="card print-hide"><h2>Class register <span class="muted tiny">(${list.length})</span></h2><input aria-label="Filter pupils" id="pupilSearch" placeholder="Find a pupil…" value="${esc(searchTerm)}"><div class="list-scroll" id="pupilRoster">${roster(list,p)}</div><hr class="divider">${selectedSeat?seatControls(p):'<p class="muted tiny">Select a seat to lock, clear, or open pupil details.</p>'}</aside></div>`));
 }
 function ruleAuditMarkup(report) {
  if(!report.checks.length)return '';
@@ -378,6 +378,65 @@ function setPrivacyLock(locked){
  }
  render();
 }
+
+function pupilSummaryModal(id,seatId){
+ const s=student(id),p=currentPlan();
+ if(!s||!p||!['seating','lesson'].includes(view)||privacyLocked||s.classId!==classId)return;
+ const opp=s.opp||{},type=opp.need||s.need||'';
+ const lines=(part,limit=3)=>(Array.isArray(opp[part])?opp[part]:[]).map(clean).filter(Boolean).slice(0,limit);
+ const tags=seatTagMarkup(s).replace(/<small class="seat-extra[^>]*>[\s\S]*?<\/small>/,'');
+ const seating=oppSeatingHints(s.opp).filter(x=>!x.reviewOnly);
+ const guidance=[...new Set([...lines('adaptations',4),...lines('adjustments',4)])];
+ const extras=[...new Set([...lines('about',3)])];
+ const bulletList=(list)=>list.length?'<ul>'+list.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>':'<p class="muted tiny">No specific guidance recorded.</p>';
+ const section=(title,items)=>items.length?'<section class="summary-section"><h3>'+esc(title)+'</h3>'+bulletList(items)+'</section>':'';
+ const summary='<div class="summary-overview">'+
+  '<div class="summary-labels">'+tags+'</div>'+
+  (type?'<p><strong>Area of need:</strong> '+esc(type)+'</p>':'')+
+  (opp.diagnosis?'<p><strong>Identification:</strong> '+esc(opp.diagnosis)+'</p>':'')+
+  (opp.examAccess?'<p><strong>Exam access:</strong> '+esc(opp.examAccess)+'</p>':'')+
+  (s.readingAge?'<p><strong>Reading age:</strong> '+esc(s.readingAge)+'</p>':'')+
+  '</div>'+
+  (!s.opp?'<div class="notice">No One Page Profile is imported for this pupil. Available Edulink flags and teacher strategies are shown here.</div>':'')+
+  (seating.length?section('Seating preferences',seating.map(h=>h.label+' · '+h.evidence.join(' · '))):'')+
+  (s.strategies?section('Agreed teaching strategies',[s.strategies]):'')+
+  (s.pupilVoice?section('Pupil voice · What helps me learn',[s.pupilVoice]):'')+
+  section('Key classroom support',guidance.slice(0,3))+
+  (guidance.length>3?'<details class="summary-more"><summary>Show all '+guidance.length+' support strategies</summary>'+bulletList(guidance)+'</details>':'')+
+  section('Other useful information',extras.slice(0,2))+
+  (s.reviewedDate?'<p class="muted tiny">Strategies reviewed: '+esc(fmtDate(s.reviewedDate))+'</p>':'')+
+  (!seating.length&&!guidance.length&&!extras.length&&!s.strategies&&!s.pupilVoice?
+    '<p class="muted">There is no further classroom support guidance recorded for this pupil.</p>':'');
+ const root=$('#modalRoot');
+ root.innerHTML='<div class="modal-backdrop"><div class="modal pupil-summary-modal" role="dialog" aria-modal="true" aria-labelledby="pupil-summary-title">'+
+  '<div class="summary-header"><div><span class="eyebrow">PRIVATE · TEACHER VIEW</span><h2 id="pupil-summary-title">'+esc(s.name)+'</h2><p class="muted">Pupil support at a glance</p></div><button type="button" class="summary-close" aria-label="Close pupil summary" data-summary-action="close">×</button></div>'+
+  '<div class="summary-body">'+summary+'</div>'+
+  '<div class="summary-footer">'+
+    '<button class="btn btn-primary" type="button" data-summary-action="profile">'+uiIcon('file')+'<span>Full OPP / profile</span></button>'+
+    '<button class="btn" type="button" data-summary-action="move">'+uiIcon('swap')+'<span>Move / swap</span></button>'+
+    '<details class="summary-quick"><summary>More actions</summary><div class="quick-actions">'+
+    '<button class="btn" type="button" data-summary-action="homework">Homework record</button>'+
+    '<button class="btn" type="button" data-summary-action="late">Late arrival</button>'+
+    '<button class="btn" type="button" data-summary-action="behaviour">Behaviour record</button>'+
+    '</div></details></div></div></div>';
+ root.querySelectorAll('[data-summary-action]').forEach(b=>b.addEventListener('click',()=>{
+  const act=b.dataset.summaryAction;
+  closeModal();
+  if(act==='profile'){showStudent(id);return;}
+  if(act==='move'){
+   if(view!=='seating')goto('seating');
+   seatMoveSource=seatId;selectedStudent='';selectedSeat=seatId;render();return;
+  }
+  if(['homework','late','behaviour'].includes(act)){
+   const was=selectedStudent;
+   selectedStudent=id;recordModal(act==='late'?'late':act);
+   selectedStudent=was;
+  }
+ }));
+ root.querySelector('.modal-backdrop').addEventListener('click',e=>{if(e.target.classList.contains('modal-backdrop'))closeModal();});
+ root.querySelector('[data-summary-action="close"]').focus();
+}
+
 function quickPupilMenu(id){
  const s=student(id),p=currentPlan();if(!s||!p||s.classId!==classId)return;
  selectedStudent=id;
@@ -570,10 +629,35 @@ $('#app').addEventListener('pointermove',e=>{if(!dragState||view!=='rooms')retur
 $('#app').addEventListener('pointerup',()=>{if(!dragState)return;const d=dragState;dragState=null;if(d.moved){history.push(d.prior);if(history.length>60)history.shift();future=[];dirty=true;selectedSeat=d.id==='teacher'?'':d.id;render();}else if(d.id!=='teacher'){selectedSeat=d.id;render();}});
 $('#app').addEventListener('pointercancel',()=>{if(dragState){data=dragState.prior;dragState=null;render();}});
 
-function seatClick(seatId){const p=currentPlan();if(homeworkSession?.classId===classId&&(view==='seating'||view==='lesson')){const id=p?.assignments[seatId];if(id)toggleHomework(id);else notice('This seat has no pupil. Use the class list for unseated pupils.');return;}if(view==='rooms'){selectedSeat=seatId;render();return;}if(view==='lesson'){const id=p?.assignments[seatId];if(id)quickPupilMenu(id);else notice('Select an occupied seat to open pupil actions.');return;}if(!p)return;
- if(selectedStudent){assignSeat(seatId,selectedStudent);return;}
- if(selectedSeat&&selectedSeat!==seatId){const a=selectedSeat,b=seatId;if(p.locks.includes(a)||p.locks.includes(b)){notice('Unlock fixed seats before swapping pupils.','error');return;}mutation(()=>{const first=p.assignments[a],second=p.assignments[b];if(first!==undefined)p.assignments[b]=first;else delete p.assignments[b];if(second!==undefined)p.assignments[a]=second;else delete p.assignments[a];});selectedSeat=b;return;}
- selectedSeat=seatId;render();}
+function seatClick(seatId){
+ const p=currentPlan();
+ if(homeworkSession?.classId===classId&&(view==='seating'||view==='lesson')){
+  const id=p?.assignments[seatId];
+  if(id)toggleHomework(id);else notice('This seat has no pupil. Use the class list for unseated pupils.');
+  return;
+ }
+ if(view==='rooms'){selectedSeat=seatId;render();return;}
+ if(!p||!['seating','lesson'].includes(view))return;
+ if(view==='seating'&&selectedStudent){assignSeat(seatId,selectedStudent);return;}
+ if(seatMoveSource&&view==='seating'){
+  const from=seatMoveSource;
+  if(from===seatId){seatMoveSource='';render();return;}
+  if(p.locks.includes(from)||p.locks.includes(seatId)){
+   notice('Unlock fixed seats before moving or swapping pupils.','error');return;
+  }
+  mutation(()=>{
+   const first=p.assignments[from],second=p.assignments[seatId];
+   if(first!==undefined)p.assignments[seatId]=first;else delete p.assignments[seatId];
+   if(second!==undefined)p.assignments[from]=second;else delete p.assignments[from];
+  });
+  seatMoveSource='';selectedSeat=seatId;notice('Seating updated. Undo is available.','success');
+  return;
+ }
+ const id=p.assignments[seatId];
+ if(id){selectedSeat=seatId;pupilSummaryModal(id,seatId);return;}
+ if(view==='lesson'){notice('That seat is empty. Open Seating plans to assign a pupil.');return;}
+ selectedSeat=seatId;render();
+}
 function assignSeat(seatId,id){const p=currentPlan();if(!p||!currentStudents().some(s=>s.id===id))return;
  try{const result=placeStudent(p,seatId,id);if(result.action!=='unchanged')mutation(()=>{p.assignments=result.assignments;});selectedStudent='';selectedSeat=seatId;if(result.action==='swapped')notice('Pupils swapped. Undo is available.','success');}
  catch(err){notice(err.message,'error');}
@@ -594,6 +678,7 @@ function action(id,attrs={}){try{switch(id){
  case 'import-opp':$('#oppFiles').click();break;case 'review-opps':reviewPendingOPPs();break;
  case 'go-rooms':goto('rooms');break;case 'go-backup':goto('backup');break;
  case 'open-class':setClass(attrs.id);goto('seating');break;
+ case 'cancel-seat-move':seatMoveSource='';selectedSeat='';render();break;
  case 'new-version':{if(!classId){notice('Import a class first.','error');break;}openModal('Create seating plan version',`${field('name','Version name','Autumn 1')}<label>Room layout${choose('room',data.rooms.map(r=>({value:r.id,label:r.name})),roomId)}</label>`,fd=>{const room=data.rooms.find(r=>r.id===fd.get('room'));mutation(()=>{const p=newPlan(classId,room,clean(fd.get('name')));data.plans.push(p);planId=p.id;roomId=room.id;});selectedSeat='';});break;}
  case 'duplicate-plan':{const p=currentPlan();if(!p)break;openModal('Duplicate this version',field('name','New version name',p.name+' copy'),fd=>mutation(()=>{const n=clone(p);n.id=uid();n.name=clean(fd.get('name'));n.created=new Date().toISOString();data.plans.push(n);planId=n.id;}));break;}
  case 'rename-plan':{const p=currentPlan();if(!p)break;openModal('Rename version',field('name','Version name',p.name),fd=>mutation(()=>p.name=clean(fd.get('name'))));break;}
