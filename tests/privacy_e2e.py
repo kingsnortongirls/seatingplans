@@ -60,7 +60,7 @@ async def main():
             assert await page.get_by_text('One Page Profiles',exact=True).count()>=1
             assert await page.get_by_text('Inclusion Matters',exact=True).count()>=1
             assert await page.get_by_text('Year 8',exact=False).count()>=1
-            assert await page.get_by_role('button',name='Choose ZIP or Word OPP files').count()==1
+            assert await page.get_by_role('button',name='Choose PDF, Word or ZIP OPP files').count()==1
             assert await page.locator('#setup-opp-step').count()==1
             # The teacher may skip OPPs before choosing the next class.
             await page.get_by_role('button',name='Skip OPP import for now').click()
