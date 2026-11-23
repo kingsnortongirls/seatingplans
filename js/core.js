@@ -503,6 +503,7 @@ export async function decryptBackup(text,password) {
 }
 export function validateBackup(data) {
  if(!data||data.schema!==1||!Array.isArray(data.classes)||!Array.isArray(data.students)||!Array.isArray(data.rooms)||!Array.isArray(data.plans)||!Array.isArray(data.records))throw new Error('Backup data is incomplete or incompatible.');
- if(data.students.length>12000||data.plans.length>2000||data.records.length>200000)throw new Error('Backup exceeds reasonable size limits.');
+ if((data.assessments&&!Array.isArray(data.assessments))||(data.questioningLog&&!Array.isArray(data.questioningLog))||(data.yearRollovers&&!Array.isArray(data.yearRollovers)))throw new Error('Backup contains invalid optional collections.');
+ if(data.students.length>12000||data.plans.length>2000||data.records.length>200000||(data.assessments?.length||0)>100000||(data.questioningLog?.length||0)>250000||(data.yearRollovers?.length||0)>1000)throw new Error('Backup exceeds reasonable size limits.');
  return data;
 }
