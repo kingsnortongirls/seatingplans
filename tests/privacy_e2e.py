@@ -59,7 +59,7 @@ async def main():
             assert await page.get_by_role('button',name="I'm finished · Create backup").count()==1
             # Repeat the wizard for a second fictional class, preserving the first.
             await page.get_by_role('button',name='Import next class').click()
-            another=b'Learner,Class,Student ID,Target,COTTA Nov\\nPupil Delta,9X/CS,ID4,7,6\\n'
+            another=b'Learner,Class,Student ID,Target,COTTA Nov\nPupil Delta,9X/CS,ID4,7,6\n'
             await page.locator('#csvFile').set_input_files({'name':'second-synthetic.csv','mimeType':'text/csv','buffer':another})
             await page.get_by_role('button',name='Confirm reviewed import').click()
             assert await page.get_by_text('2 teaching groups',exact=False).count()>=1
