@@ -6,3 +6,5 @@
 
 /* Dashboard KPIs and field affordances */
 .metric{background:white;border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px;min-width:0;margin-bottom:8px}.metric strong{font-size:30px;letter-spacing:-.8px}.metric small{font-size:12px;font-weight:800}.metric span{color:var(--sub);font-size:11px}.check{display:flex;gap:8px;align-items:center;line-height:1.5;margin:10px 0;font-weight:500}.check input{width:auto;min-height:auto}.icon-button{border:1px solid var(--line);border-radius:7px;background:white;padding:4px 7px;color:var(--accent)}.seat small{line-height:1.1;overflow-wrap:anywhere}.canvas .seat{cursor:pointer}.canvas[data-mode=rooms] .seat,.canvas[data-mode=rooms] .teacher-desk{cursor:grab}
+
+.pupil-chip small{display:block;font-size:10px;margin-top:4px;color:var(--sub)}
