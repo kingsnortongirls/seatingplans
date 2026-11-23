@@ -309,7 +309,7 @@ function spinPupilPicker(){
    render();renderProjector();return;
   }
   spin.name=pool[randomPupilIndex(pool.length)].name;
-  $('[data-picker-display]').forEach(el=>{el.textContent=spin.name;});
+  document.querySelectorAll('[data-picker-display]').forEach(el=>{el.textContent=spin.name;});
   try{
    const projected=projectorWindow&&!projectorWindow.closed?projectorWindow.document.querySelector('.picked-name'):null;
    if(projected)projected.textContent=spin.name;
