@@ -75,6 +75,20 @@ These changes retain the strict **local only, no automatic student-data storage*
 
 OPP text is interpreted locally using explicit, deterministic phrase matching, not sent to an external AI service. Near-teacher means one of the closest third of seats to the teacher desk in the current room template. Independent seating means no other assigned pupil within 15 layout units. These are useful starting definitions, not substitutes for reviewing the individual OPP and room layout. Backups and restoration remain encrypted and entirely browser based. Always test with synthetic data and obtain school approval before using real pupil files.
 
+## Interface and everyday workflow
+
+The interface uses a consistent set of **local SVG icons** across the menu and main actions; there is no external icon library or remote asset request. Navigation is grouped into **Plan & teach**, **Pupil information** and **Your data**, with a mobile drawer that closes on navigation or a tap outside.
+
+The dashboard has four prominent steps: **Set up classes → Create seating plan → Start a lesson → Save a backup**. The seating-plan screen keeps frequently used actions visible and groups less frequent controls under **More views** and **More plan options**.
+
+### Tap a seated pupil for their support summary
+
+On the **Seating plans** or **Lesson mode** screen, click or tap an **occupied seat** to open a private, concise **Pupil support at a glance** dialogue. It includes available SEND/PP/More Able/EAL flags, OPP area of need, identification and access arrangements, seating preferences, selected classroom adaptations, pupil voice and reviewed teacher strategies. It also provides **Full OPP / profile** and quick record actions. It does not display pupil photographs.
+
+This is **teacher-only** information. It is never added to pupil printouts or the name-only projector view, and the pop-up is hidden in printed views. Privacy lock closes any open pupil dialogue.
+
+**Tapping a pupil never swaps or moves them.** Select **Move / swap** deliberately and then tap the destination seat. Alternatively, select a pupil in the class register and tap a seat to place them. An active move can be cancelled, and Undo remains available. While marking missing homework, tapping a seat continues to mark the homework record rather than opening a profile.
+
 ## Classroom features, generation and privacy verification
 
 ### Teacher-only teaching features
