@@ -236,3 +236,17 @@
 @media(prefers-reduced-motion:reduce){
  .picker-stage.is-spinning [data-picker-display]{animation:none}
 }
+
+/* Compact pupil-grouped OPP seating review. Only genuine seating instructions
+   are presented as editable recommendations; unrelated OPP guidance is omitted. */
+.opp-review-list{display:flex;flex-direction:column;gap:12px;min-height:80px;padding:3px}
+.opp-pupil-group{border:1px solid #d7e0eb;border-radius:11px;padding:12px;background:#f9fbfe}
+.opp-pupil-group h3{font-size:15px;margin:0 0 9px;color:#183853}
+.opp-suggestion{display:flex;align-items:start;gap:12px;justify-content:space-between;padding:10px 0;border-top:1px solid #e3e9f1}
+.opp-suggestion:first-of-type{border-top:0;padding-top:3px}
+.opp-suggestion-main{flex:1;min-width:0;font-size:13px;margin:0!important;cursor:pointer}
+.opp-preference-title{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:5px}
+.opp-preference-title input{width:17px;height:17px;margin:0;accent-color:#2569aa}
+.opp-evidence{font-weight:400;font-size:12px;line-height:1.4;color:#445970;padding-left:25px;margin:3px 0}
+.opp-suggestion .btn{flex-shrink:0}
+@media(max-width:500px){.opp-pupil-group{padding:10px}.opp-suggestion{gap:8px}.opp-suggestion .btn{padding:7px 8px;font-size:12px}.opp-evidence{padding-left:0}}
