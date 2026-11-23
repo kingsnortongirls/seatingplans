@@ -563,18 +563,26 @@ function download(content,name,mime){const blob=new Blob([content],{type:mime});
 function backupModal(){if(!crypto.subtle){notice('Encrypted backups require a secure (HTTPS) browser context.','error');return;}openModal('Create encrypted backup',`<div class="callout privacy">Creates one encrypted file containing all your session data, including private OPP details. Choose a strong, unique password.</div>${field('password','Backup password (12+ characters)','','password')}${field('confirm','Repeat password','','password')}`,async fd=>{const pass=String(fd.get('password'));if(pass.length<12||pass!==fd.get('confirm'))throw new Error('Passwords must match and be at least 12 characters.');const encrypted=await encryptBackup(data,pass);download(encrypted,`seating-plans-${isoDate()}.seatingplan`,'application/octet-stream');render();notice('Encrypted download requested. Verify the saved file before closing this session.','success');});}
 async function importCSV(files){
  if(!files.length)return;
- const incoming=[];
+ const incoming=[],diagnostics=[];
  for(const file of files){
   if(file.size>10*1024*1024)throw new Error('CSV larger than 10 MB.');
   const pack=readEdulink(await file.text());
   incoming.push(...pack.students);
+  const keys=pack.headers.map(h=>clean(h).toLowerCase().replace(/[^a-z0-9]+/g,''));
+  const duplicates=pack.headers.filter((h,i)=>keys.indexOf(keys[i])!==i);
+  if(duplicates.length)diagnostics.push(file.name+': duplicate headings: '+[...new Set(duplicates)].join(', '));
+  if(!pack.matched.includes('target'))diagnostics.push(file.name+': no recognised target grade column');
+  if(!pack.assessmentHeaders.length)diagnostics.push(file.name+': no recognised COTTA/assessment columns');
+  if(!pack.matched.includes('send'))diagnostics.push(file.name+': SEND status column not found');
+  if(!pack.matched.includes('pp'))diagnostics.push(file.name+': Pupil Premium column not found');
  }
  if(!incoming.length)throw new Error('No pupils found in these files.');
- reviewEdulinkImport(incoming);
+ reviewEdulinkImport(incoming,diagnostics);
 }
-function reviewEdulinkImport(incoming){
+function reviewEdulinkImport(incoming,diagnostics=[]){
  const preview=buildEdulinkReview(data.classes,data.students,incoming),items=preview.items;
  const counts={matched:items.filter(x=>x.status==='matched').length,new:items.filter(x=>x.status==='new').length,review:items.filter(x=>['duplicate','ambiguous'].includes(x.status)).length};
+ const warningRows=diagnostics.map(w=>'<p class="alert">'+esc(w)+'</p>').join('');
  const rows=items.map(item=>{
   const existing=data.classes.find(c=>c.id===item.classId);
   const options=[{value:'new',label:'Add as new pupil'},{value:'skip',label:'Skip this row'},...data.students.filter(s=>s.classId===existing?.id).sort((a,b)=>a.name.localeCompare(b.name,'en-GB')).map(s=>({value:'match:'+s.id,label:'Match to '+s.name+(s.active===false?' (inactive)':'')}))];
@@ -583,7 +591,7 @@ function reviewEdulinkImport(incoming){
   return `<div class="list-card" style="align-items:flex-start;flex-wrap:wrap"><div style="flex:1;min-width:160px"><strong>${esc(item.incoming.name)}</strong><small>${esc(item.group)}${item.incoming.reg?' · '+esc(item.incoming.reg):''} · ${esc(kind)}</small></div><label style="min-width:200px;flex:1">Import action${choose('map_'+item.index,options,value)}</label></div>`;
  }).join('');
  const absent=preview.notInExport.map(s=>`<label class="check" style="display:block;margin:8px 0"><input type="checkbox" name="retire_${esc(s.id)}"> Mark <strong>${esc(s.name)}</strong> inactive (${esc(data.classes.find(c=>c.id===s.classId)?.name||'Class')})</label>`).join('');
- openModal('Review Edulink marksheet changes',`<div class="notice"><strong>${items.length} incoming pupils:</strong> ${counts.matched} suggested matches, ${counts.new} new, ${counts.review} requiring review. These are suggestions only; nothing has been changed.</div><p class="muted tiny">Check name changes and duplicates. Choose an existing pupil to retain their seating history, OPP and homework records. The import must be reviewed and confirmed locally.</p><div class="list-scroll" style="max-height:360px">${rows}</div><hr class="divider"><h3>Not found in this export (${preview.notInExport.length})</h3><p class="muted tiny">These pupils remain active by default. Only tick a pupil if you have confirmed they have left this teaching group. If this export is incomplete, do not mark anyone inactive.</p><div class="list-scroll" style="max-height:150px">${absent||'<p class="muted tiny">All known active pupils were matched, or this is a new class.</p>'}</div>`,fd=>{
+ openModal('Review Edulink marksheet changes',`<div class="notice"><strong>${items.length} incoming pupils:</strong> ${counts.matched} suggested matches, ${counts.new} new, ${counts.review} requiring review. These are suggestions only; nothing has been changed.</div><p class="muted tiny">Check name changes and duplicates. Choose an existing pupil to retain their seating history, OPP and homework records. The import must be reviewed and confirmed locally.</p>${warningRows?`<div class="alert"><strong>Import quality warnings</strong>${warningRows}</div>`:'' }<div class="list-scroll" style="max-height:360px">${rows}</div><hr class="divider"><h3>Not found in this export (${preview.notInExport.length})</h3><p class="muted tiny">These pupils remain active by default. Only tick a pupil if you have confirmed they have left this teaching group. If this export is incomplete, do not mark anyone inactive.</p><div class="list-scroll" style="max-height:150px">${absent||'<p class="muted tiny">All known active pupils were matched, or this is a new class.</p>'}</div>`,fd=>{
   const choices=items.map(item=>({item,decision:String(fd.get('map_'+item.index)||'skip')}));
   const used=new Set(),newNames=new Set();
   for(const {item,decision} of choices){
@@ -611,6 +619,7 @@ function reviewEdulinkImport(incoming){
     if(!cls){cls={id:uid(),name:item.group};data.classes.push(cls);}
     const options=Object.keys(item.incoming.gradeColumns||{});
     cls.assessmentHeaders=[...new Set([...(cls.assessmentHeaders||[]),...options])].slice(0,45);
+    cls.importWarnings=diagnostics;
     if(!cls.selectedAssessment&&cls.assessmentHeaders.length)cls.selectedAssessment=cls.assessmentHeaders[0];
     const imported={...item.incoming,current:cls.selectedAssessment?item.incoming.gradeColumns?.[cls.selectedAssessment]||item.incoming.current:item.incoming.current};
     if(decision==='new'){data.students.push({...imported,id:uid(),classId:cls.id,active:true,opp:null,notes:'',strategies:'',pupilVoice:'',reviewedDate:''});added++;}
