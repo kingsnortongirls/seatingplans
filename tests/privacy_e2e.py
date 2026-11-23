@@ -62,6 +62,26 @@ async def main():
             await page.get_by_role('button',name='Preview seating plan').click()
             await page.get_by_role('button',name='Apply seating plan').click()
             assert await page.locator('.seat:not(.unassigned)').count()==3
+            # Original-workbook parity: manual assessment history and teacher progress.
+            await page.locator('#nav [data-view=assessments]').click()
+            await page.get_by_role('button',name='+ Save assessment').click()
+            await page.locator('#modalForm input[name=name]').fill('Synthetic unit assessment')
+            await page.locator('#modalForm input[name=grade]').fill('6')
+            await page.locator('#modalForm input[name=date]').fill('2026-11-23')
+            await page.locator('#modalForm button[type=submit]').click()
+            assert await page.locator('.progress-svg').count()==1
+            # One-screen lesson timer, explicit question outcome and privacy lock.
+            await page.locator('#nav [data-view=lesson]').click()
+            await page.get_by_role('button',name='2 min').click()
+            assert await page.locator('#lessonTimerLabel').inner_text()=='02:00'
+            await page.get_by_role('button',name='Pick pupil').click()
+            await page.get_by_role('button',name='Questioned ✓').click()
+            assert '1 pupil(s) questioned' in await page.locator('main').inner_text()
+            await page.locator('#privacyToggle').click()
+            assert 'Screen concealed' in await page.locator('main').inner_text()
+            assert SENTINEL not in await page.locator('main').inner_text()
+            await page.locator('#privacyToggle').click()
+            await page.locator('#nav [data-view=seating]').click()
             # Projector receives names and positions only. It must not contain notes,
             # SEND/PP headings, source data or grades from the Edulink file.
             async with page.expect_popup() as open_info:
