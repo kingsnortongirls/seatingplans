@@ -54,7 +54,16 @@ async def main():
             assert await page.get_by_text('Set up your teaching groups').count()==1
             await page.locator('#csvFile').set_input_files({'name':'synthetic.csv','mimeType':'text/csv','buffer':synthetic_csv()})
             await page.get_by_role('button',name='Confirm reviewed import').click()
-            # After reviewing the CSV, the wizard offers the next group or a backup.
+            # The next stage is the year-group OPP import, with the exact
+            # staff folder instructions and ZIP/multiple-DOCX choices.
+            assert await page.get_by_text('Next: import year-group OPPs').count()==1
+            assert await page.get_by_text('One Page Profiles',exact=True).count()>=1
+            assert await page.get_by_text('Inclusion Matters',exact=True).count()>=1
+            assert await page.get_by_text('Year 8',exact=False).count()>=1
+            assert await page.get_by_role('button',name='Choose ZIP or Word OPP files').count()==1
+            assert await page.locator('#setup-opp-step').count()==1
+            # The teacher may skip OPPs before choosing the next class.
+            await page.get_by_role('button',name='Skip OPP import for now').click()
             assert await page.get_by_role('button',name='Import next class').count()==1
             assert await page.get_by_role('button',name="I'm finished · Create backup").count()==1
             # Repeat the wizard for a second fictional class, preserving the first.
@@ -63,6 +72,8 @@ async def main():
             await page.locator('#csvFile').set_input_files({'name':'second-synthetic.csv','mimeType':'text/csv','buffer':another})
             await page.get_by_role('button',name='Confirm reviewed import').click()
             assert await page.get_by_text('2 teaching groups',exact=False).count()>=1
+            assert await page.get_by_text('Year 9',exact=False).count()>=1
+            await page.get_by_role('button',name='Skip OPP import for now').click()
             await page.get_by_role('button',name="I'm finished · Create backup").click()
             assert await page.get_by_text('Create encrypted backup').count()>=1
             await page.locator('#modalRoot [data-action=close-modal]').click()
