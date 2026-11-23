@@ -48,8 +48,19 @@ async def main():
             assert "connect-src 'none'" in csp
             assert "script-src 'self'" in csp
             assert await page.evaluate('!!crypto.subtle')
+            # Fresh sessions clearly offer restoration or a new class wizard.
+            assert await page.get_by_role('button',name='Restore encrypted backup').count()==1
+            await page.get_by_role('button',name='Start class setup').click()
+            assert await page.get_by_text('Set up your teaching groups').count()==1
             await page.locator('#csvFile').set_input_files({'name':'synthetic.csv','mimeType':'text/csv','buffer':synthetic_csv()})
             await page.get_by_role('button',name='Confirm reviewed import').click()
+            # After reviewing the CSV, the wizard offers the next group or a backup.
+            assert await page.get_by_role('button',name='Import next class').count()==1
+            assert await page.get_by_role('button',name="I'm finished · Create backup").count()==1
+            await page.get_by_role('button',name="I'm finished · Create backup").click()
+            assert await page.get_by_text('Create encrypted backup').count()>=1
+            await page.locator('#modalRoot [data-action=close-modal]').click()
+            await page.locator('#nav [data-view=dashboard]').click()
             await page.get_by_role('button',name='Open',exact=True).first.click()
             await page.get_by_role('button',name='+ New version').click()
             await page.locator('#modalForm button[type=submit]').click()
