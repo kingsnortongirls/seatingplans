@@ -19,7 +19,7 @@ A fully client-side seating plan and teaching toolkit designed for static hostin
 - Import or refresh Edulink marksheets with pupil name, class, reg group, SEND, PP, EAL, prior attainment, reading/spelling ages, target and current grades.
 - Bulk OPP import from individual `.docx` or `.zip` files with Word text-box extraction, photo extraction and exact pupil-name matching; ambiguous matches are shown for review.
 - Standard 2-4-2 room (four rows, 32 seats), **IT3 (34 seats: 8 top, 7 left, 7 right and 12 on the central island in two rows of 6)**, **IT2 (33 seats: 8 left, 7 right, 10 central, 4 upper and 4 lower)**, pairs, group tables and U-shape, plus custom drag-and-drop editing, teacher desk and per-seat accessibility priority.
-- Manual placement, swaps and locking; automatically suggested seating according to separation, preferred pairing and accessible seating rules. Conflicts are reported rather than silently ignored.
+- Manual placement, swaps and locking; automatically suggested seating according to separation, preferred pairing and accessible seating rules. Optional **SEND and/or Pupil Premium accessible seat preference** is selected separately on each plan, with capacity and individual unaccommodated-pupil reporting. Conflicts are reported rather than silently ignored.
 - Named seating plan versions, duplication, comparison and undo/redo.
 - Missing homework, lateness, behaviour entries, dated notes, pupil support and attainment views.
 - Random questioning without repetition, absence exclusion and grouping by attainment or position.
@@ -42,6 +42,12 @@ The IT3 starting layout follows the approved classroom screenshot. Seats **13, 2
 ## IT2 preset
 
 The **IT2** classroom is also available immediately in Room Designer, and as a 33-seat option when choosing **+ New room**, including all 8 usually unoccupied positions: four on the upper desks, two at the lower-left table, one on the left bank and one in the central block. The whiteboard and movable teacher desk are both at the bottom of the plan, matching IT3. 'Front' seating priority correctly means closer to the lower edge for these two rooms. Empty positions remain real, assignable seats, not permanently blocked chairs. No names or photographs from the reference screenshot are included.
+
+## Teacher-selected SEND / PP accessible seating
+
+From a seating plan, choose **SEND / PP accessible seats**. Tick SEND, PP or both, and save the preference. This is **off by default** and applies only to that plan version. The generator tries to reserve green **easy teacher access** seats for eligible pupils, counting any pupil flagged in both groups **once**. Individual seat locks and existing mandatory separation/priority rules remain in effect.
+
+The seating plan displays the total eligible pupils, number of accessible seats, a warning when marked accessible capacity is insufficient (including when locks occupy those seats), and a teacher-only list of eligible pupils not placed in accessible seats after generation. It is a preference, not an assumption that everyone with SEND or PP needs a special position. Teachers should confirm individual provision and adjust seats manually where appropriate. All eligibility checks, optimisation and reporting happen **locally in the browser**, and no pupil details or preferences are sent over the network. Preferences and results are included only when the teacher explicitly exports an encrypted backup.
 
 ## Install on GitHub Pages
 
