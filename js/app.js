@@ -126,6 +126,8 @@ function action(id,attrs={}){try{switch(id){
  case 'profile-tab':profileTab=attrs.tab;render();break;
  case 'save-profile-notes':{const id=selectedStudent,value=$('#profileNotes')?.value||'';mutation(()=>{const s=student(id);if(s)s.notes=value;});notice('Notes updated in session memory.','success');break;}
  case 'seating-rules':rulesModal();break;
+ case 'opp-seating-prompts':oppSeatingPromptsModal();break;
+ case 'plan-notes':planNotesModal();break;
  case 'group-access-preference':groupAccessPreferenceModal();break;
  case 'projector-view':openProjector(false);break;
  case 'fullscreen-picker':openProjector(true);break;
@@ -213,6 +215,31 @@ function openProjector(fullscreen=false){
   renderProjector();projectorWindow.focus();
   if(fullscreen)projectorWindow.document.documentElement.requestFullscreen?.().catch(()=>notice('Fullscreen was blocked. The name-only projector window is still open.'));
  }catch(e){notice('Could not open projector view: '+e.message,'error');}
+}
+function planNotesModal(){
+ const p=currentPlan();if(!p)return;
+ openModal('Seating plan notes',`<p class="muted tiny">Record why this arrangement was chosen, what worked and what to review next time. Notes are private to this plan version and are included only in encrypted exports.</p><label>Teacher notes<textarea rows="7" name="notes" maxlength="4000" placeholder="Seating rationale, changes to review, classroom observations...">${esc(p.notes||'')}</textarea></label>`,
+  fd=>mutation(()=>{p.notes=clean(fd.get('notes')).slice(0,4000);}), 'Save notes');
+}
+function reviewOppSeatingHint(pupilId,hintIndex){
+ const p=currentPlan(),s=student(pupilId);
+ const hint=s&&oppSeatingHints(s.opp)[hintIndex];
+ if(!p||!s||s.classId!==classId||!hint)return;
+ openModal('Confirm a pupil-specific seating rule',`<div class="notice"><strong>${esc(s.name)} · Original OPP wording</strong><p>${esc(hint.text)}</p></div><p class="muted tiny">Please interpret the individual guidance yourself. The application will not automatically decide whether the pupil needs a front, accessible or preferred seat.</p><label>Teacher-confirmed rule${choose('mode',[{value:'front',label:'Prefer front (nearest whiteboard)'},{value:'access',label:'Easy teacher access (green seats)'},{value:'preferred',label:'Preferred or accessible seats'}])}</label><label class="check"><input name="strict" type="checkbox"> Make this mandatory rather than a preference</label>`,fd=>{
+  const mode=fd.get('mode');
+  if(!['front','access','preferred'].includes(mode))throw new Error('Choose a valid seating rule.');
+  mutation(()=>{p.rules.push({id:uid(),type:'priority',a:s.id,b:'',mode,strict:fd.has('strict'),source:'Teacher-confirmed OPP',guidance:hint.text});});
+  notice('Teacher-confirmed seating rule added. You can inspect it in Seating rules.','success');
+ },'Add confirmed rule');
+}
+function oppSeatingPromptsModal(){
+ const p=currentPlan();if(!p)return;
+ const entries=currentStudents().flatMap(s=>oppSeatingHints(s.opp).map((hint,index)=>({s,hint,index})));
+ const rows=entries.map(({s,hint,index})=>`<div class="list-card" style="align-items:flex-start;gap:10px"><div style="flex:1"><strong>${esc(s.name)}</strong><small>${esc(hint.text)}</small></div><button type="button" class="btn btn-small" data-opp-hint="${index}" data-opp-pupil="${esc(s.id)}">Review rule</button></div>`).join('');
+ openModal('Review OPP seating guidance',`<p class="muted tiny">These are exact excerpts from locally imported OPPs. They may include phrases that are not actual seating requirements. Review the full profile and confirm any rule yourself.</p><div class="list-scroll" style="max-height:430px">${rows||'<p class="muted">No likely seating guidance found in the imported OPPs for this class.</p>'}</div>`,()=>{},'Close');
+ $('#modalRoot').querySelectorAll('[data-opp-hint]').forEach(el=>el.addEventListener('click',()=>{
+  reviewOppSeatingHint(el.dataset.oppPupil,Number(el.dataset.oppHint));
+ }));
 }
 function groupAccessPreferenceModal(){
  const p=currentPlan();if(!p)return;
