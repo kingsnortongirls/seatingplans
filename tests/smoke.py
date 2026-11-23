@@ -19,7 +19,9 @@ async def main():
   app=re.sub(r'^import [^\n]+\n','',(ROOT/'js/app.js').read_text(),count=1)
   await page.add_script_tag(content=core+'\n'+app)
   print('title',await page.title());print('pageerror',errs)
-  assert await page.get_by_text('Import an Edulink marksheet').count()>=1
+  assert await page.get_by_role('button',name='Restore encrypted backup').count()==1
+  await page.get_by_role('button',name='Start class setup').click()
+  assert await page.get_by_role('button',name='Choose Edulink CSV').count()==1
   # Synthetic Edulink export
   path=ROOT/'tests'/'demo.csv'
   with path.open('w',newline='') as f:
@@ -28,6 +30,11 @@ async def main():
   assert await page.get_by_text('Review Edulink marksheet changes').count()>=1
   await page.locator('#modalForm button[type=submit]').click()
   print('after import title',(await page.locator('main').inner_text())[:340]);print('pageerror',errs)
+  assert await page.get_by_role('button',name='Import next class').count()==1
+  await page.get_by_role('button',name="I'm finished · Create backup").click()
+  assert await page.locator('#modalForm input[name=password]').count()==1
+  await page.locator('#modalRoot [data-action=close-modal]').click()
+  await page.locator('#nav [data-view=dashboard]').click()
   await page.get_by_role('button',name='Open',exact=True).first.click()
   await page.get_by_role('button',name='+ New version').click()
   await page.locator('#modalForm input[name=name]').fill('Autumn 1')
