@@ -2,7 +2,7 @@ import {uid,clone,clean,esc,short,nameKey,isoDate,readEdulink,buildEdulinkReview
 
 // Everything below exists in memory only. No localStorage, cookies, IndexedDB, API calls or telemetry.
 const initial=()=>({schema:1,classes:[],students:[],rooms:[defaultRoom(),buildPreset('it3','IT3'),buildPreset('it2','IT2')],plans:[],records:[],assessments:[],questioned:{},questioningLog:[],yearRollovers:[],pendingOPPs:[],categories:['Homework not submitted','Truancy','Lack of effort','Disrespect','Missing equipment','Disruption','Not following instructions','Incomplete classwork','Other']});
-let data=initial(),view='dashboard',classId='',roomId=data.rooms[0].id,planId='',selectedStudent='',selectedSeat='',selectedRecord='',dirty=false,history=[],future=[],profileTab='support',searchTerm='',recordFilter='all',printMode='teacher',groupResult=[],lastPicked='',pickerExclude=true,absent=new Set(),layoutMode='move',pendingOPPs=[],oppSummary='',importSummary='',dragState=null,homeworkSession=null,projectorWindow=null,backupVerifyStatus='',hideIndicators=false,privacyLocked=false,lessonTimer={remaining:300,running:false,endsAt:0},lessonTimerHandle=null,lastPickerState='',pickerSpin=null,contextLongPress=null,suppressSeatClick=false,recordPeriod=30;
+let data=initial(),view='welcome',setupActive=false,setupPhase='import',setupLastImport='',classId='',roomId=data.rooms[0].id,planId='',selectedStudent='',selectedSeat='',selectedRecord='',dirty=false,history=[],future=[],profileTab='support',searchTerm='',recordFilter='all',printMode='teacher',groupResult=[],lastPicked='',pickerExclude=true,absent=new Set(),layoutMode='move',pendingOPPs=[],oppSummary='',importSummary='',dragState=null,homeworkSession=null,projectorWindow=null,backupVerifyStatus='',hideIndicators=false,privacyLocked=false,lessonTimer={remaining:300,running:false,endsAt:0},lessonTimerHandle=null,lastPickerState='',pickerSpin=null,contextLongPress=null,suppressSeatClick=false,recordPeriod=30;
 const $=sel=>document.querySelector(sel), $$=sel=>[...document.querySelectorAll(sel)];
 const currentClass=()=>data.classes.find(c=>c.id===classId);
 const currentRoom=()=>data.rooms.find(r=>r.id===roomId)||data.rooms[0];
@@ -25,13 +25,71 @@ function mutation(fn){backupVerifyStatus='';history.push(clone(data));if(history
 function undo(){if(!history.length)return;backupVerifyStatus='';future.push(clone(data));data=history.pop();reconcile();dirty=true;render();notice('Change undone.');}
 function redo(){if(!future.length)return;backupVerifyStatus='';history.push(clone(data));data=future.pop();reconcile();dirty=true;render();notice('Change restored.');}
 function reconcile(){if(!Array.isArray(data.assessments))data.assessments=[];if(!Array.isArray(data.questioningLog))data.questioningLog=[];if(!Array.isArray(data.yearRollovers))data.yearRollovers=[];if(!Array.isArray(data.pendingOPPs))data.pendingOPPs=[];if(!data.rooms.length)data.rooms=[defaultRoom()];if(!data.rooms.some(r=>r.id===roomId))roomId=data.rooms[0].id;if(!data.classes.some(c=>c.id===classId))classId=data.classes[0]?.id||'';if(!data.plans.some(p=>p.id===planId&&p.classId===classId))planId=data.plans.find(p=>p.classId===classId)?.id||'';}
-function goto(next){if(!['tools','lesson'].includes(next))stopPickerSpin();view=next;render();window.scrollTo({top:0,behavior:'instant'});}
+function goto(next){if(!['tools','lesson'].includes(next))stopPickerSpin();if(setupActive&&next!=='setup'){setupActive=false;setupPhase='import';}view=next;render();window.scrollTo({top:0,behavior:'instant'});}
 function setClass(id){stopPickerSpin();if(homeworkSession&&homeworkSession.classId!==id){if(!confirm('Cancel unfinished homework marking and switch classes? No homework records have been written.'))return;homeworkSession=null;}classId=id;planId=data.plans.find(p=>p.classId===id)?.id||'';selectedStudent='';selectedSeat='';absent.clear();groupResult=[];lastPicked='';}
-function render(){reconcile();$$('#nav [data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view===view));$('#breadcrumbs').textContent=({dashboard:'Your workspace',seating:'Seating plans',lesson:'Lesson mode',assessments:'Assessment history',overview:'Class overview',rooms:'Classroom designer',profiles:'Pupil profiles',records:'Teacher records',tools:'Teaching tools',backup:'Backup & restore'})[view];$('#saveIndicator').textContent=dirty?'● Changes not backed up':'Session only';$('#undoButton').disabled=history.length===0;$('#redoButton').disabled=future.length===0;
- const views={dashboard:dashboard,seating:seating,lesson:lesson,assessments:assessmentsView,overview:classOverview,rooms:rooms,profiles:profiles,records:records,tools:tools,backup:backup};$('#privacyToggle').textContent=privacyLocked?'◈ Unlock screen':'◈ Privacy lock';$('#app').innerHTML=privacyLocked?'<div class="privacy-cover"><h1>Screen concealed</h1><p>Pupil and staff information is temporarily hidden. Select Unlock screen to return to your workspace.</p></div>':views[view]();}
+function render(){reconcile();$$('#nav [data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view===view));$('#breadcrumbs').textContent=({welcome:'Start here',setup:'Set up classes',dashboard:'Your workspace',seating:'Seating plans',lesson:'Lesson mode',assessments:'Assessment history',overview:'Class overview',rooms:'Classroom designer',profiles:'Pupil profiles',records:'Teacher records',tools:'Teaching tools',backup:'Backup & restore'})[view];$('#saveIndicator').textContent=dirty?'● Changes not backed up':'Session only';$('#undoButton').disabled=history.length===0;$('#redoButton').disabled=future.length===0;
+ const views={welcome:welcome,setup:setup,dashboard:dashboard,seating:seating,lesson:lesson,assessments:assessmentsView,overview:classOverview,rooms:rooms,profiles:profiles,records:records,tools:tools,backup:backup};$('#privacyToggle').textContent=privacyLocked?'◈ Unlock screen':'◈ Privacy lock';$('#app').innerHTML=privacyLocked?'<div class="privacy-cover"><h1>Screen concealed</h1><p>Pupil and staff information is temporarily hidden. Select Unlock screen to return to your workspace.</p></div>':views[view]();}
 const classChoices=(value=classId)=>choose('classId',data.classes.map(c=>({value:c.id,label:c.name})),value,'data-action="select-class"');
 const planChoices=(value=planId)=>choose('planId',data.plans.filter(p=>p.classId===classId).map(p=>({value:p.id,label:p.name})),value,'data-action="select-plan"');
-function dashboard(){const pupils=currentStudents();return heading('Welcome to Seating Plans','An offline-in-the-browser teacher workspace. Student information is never transmitted.',button('↑ Import Edulink CSV','import-csv','btn btn-primary')+button('↑ Import OPPs','import-opp','btn')+(data.pendingOPPs?.length?button('Review OPP matches ('+data.pendingOPPs.length+')','review-opps','btn'):''))+ 
+// An intentionally transient first-run journey. We never remember that a teacher
+// has visited: each fresh page load must offer restoration, because session data
+// cannot be recovered from browser storage.
+function welcome(){
+ return `<section class="onboarding-hero">
+   <span class="onboarding-eyebrow">PRIVATE TEACHER TOOLKIT · START HERE</span>
+   <h1>Welcome to Seating Plans</h1>
+   <p>Continue your previous work from an encrypted backup, or set up a new teaching session. Pupil information stays in this browser and is never uploaded.</p>
+  </section>
+  <div class="onboarding-grid">
+   <section class="onboarding-card onboarding-restore">
+    <span class="onboarding-symbol" aria-hidden="true">↥</span>
+    <h2>Restore my backup</h2>
+    <p><strong>Already used Seating Plans?</strong> Open your saved encrypted file and enter its password to continue with your classes, layouts and records.</p>
+    ${button('Restore encrypted backup','restore-backup','btn btn-primary onboarding-main-action')}
+   </section>
+   <section class="onboarding-card">
+    <span class="onboarding-symbol" aria-hidden="true">▦</span>
+    <h2>Set up my classes</h2>
+    <p><strong>Starting fresh?</strong> Import an Edulink marksheet, review the pupils, and repeat for each teaching group. A backup prompt appears when you finish.</p>
+    ${button('Start class setup','wizard-start','btn btn-primary onboarding-main-action')}
+   </section>
+  </div>
+  <div class="onboarding-footer">
+   <p><strong>Important:</strong> This application does not save pupils automatically. Refreshing or closing the tab loses any changes not saved in a verified encrypted backup.</p>
+   ${button('Continue without the wizard','wizard-skip','btn')}
+  </div>`;
+}
+function setup(){
+ const count=data.classes.length;
+ const names=data.classes.slice().sort((a,b)=>a.name.localeCompare(b.name,'en-GB'));
+ const added=setupPhase==='next';
+ return heading(added?'Class import complete':'Set up your teaching groups',
+  added?'Ready to import another class, or finish and create an encrypted backup.':'Import the first class using your Edulink marksheet. You can review all pupil matches before saving.')+
+ `<div class="onboarding-step"><span class="onboarding-step-label">GUIDED SETUP</span><strong>${count} teaching group${count===1?'':'s'} in this session</strong></div>
+ ${added?`<div class="notice onboarding-success"><strong>✓ Marksheet reviewed</strong><p>${esc(setupLastImport)}</p></div>`:''}
+ <div class="onboarding-grid onboarding-grid-next">
+  <section class="onboarding-card">
+   <span class="onboarding-symbol" aria-hidden="true">＋</span>
+   <h2>${count?'Add your next class':'Import your first class'}</h2>
+   <p>Choose an Edulink CSV file. You'll review new pupils, existing matches and any import warnings before anything is changed.</p>
+   ${button(count?'Import next class':'Choose Edulink CSV','wizard-import-next','btn btn-primary onboarding-main-action')}
+   <p class="muted tiny">One CSV can contain more than one teaching group. Those groups will appear in the list below.</p>
+  </section>
+  <section class="onboarding-card onboarding-finish">
+   <span class="onboarding-symbol" aria-hidden="true">✓</span>
+   <h2>I'm finished adding classes</h2>
+   <p>Proceed to the encrypted backup step so you can reopen this workspace next time. The saved file must be verified before leaving the browser.</p>
+   ${button("I'm finished · Create backup",'wizard-finish','btn btn-primary onboarding-main-action')}
+   <p class="muted tiny">You can continue editing or import additional OPPs after saving. Create a new backup after further changes.</p>
+  </section>
+ </div>
+ ${card(names.length?names.map(cls=>`<div class="list-card"><div><strong>${esc(cls.name)}</strong><small>${data.students.filter(s=>s.classId===cls.id&&s.active!==false).length} pupil(s)</small></div></div>`).join(''):'<p class="muted">No class imported yet.</p>','Classes imported in this session')}
+ <div class="onboarding-footer">
+  <p>Optional: ${button('Import pupil OPPs','import-opp','btn btn-small')} You can also do this later. All files are processed locally.</p>
+  ${button('Exit guided setup','wizard-exit','btn')}
+ </div>`;
+}
+function dashboard(){const pupils=currentStudents();return heading('Welcome to Seating Plans','An offline-in-the-browser teacher workspace. Student information is never transmitted.',button('↑ Import Edulink CSV','import-csv','btn btn-primary')+button('Guided setup','wizard-start','btn')+button('↑ Import OPPs','import-opp','btn')+(data.pendingOPPs?.length?button('Review OPP matches ('+data.pendingOPPs.length+')','review-opps','btn'):''))+ 
  `<div class="callout privacy"><strong>Private session.</strong> Files are processed in this browser only. There is no account, server database, analytics or automatic saving. Export an encrypted backup before closing or refreshing this page.</div>`+
  `<div class="grid four">${stat(data.classes.length,'Classes','Imported from Edulink')}${stat(data.students.length,'Pupils','Session memory only')}${stat(data.rooms.length,'Room layouts','Fully editable')}${stat(data.plans.length,'Plan versions','Included in backups')}</div>`+
  `<div class="grid two">${card(`<div class="dropzone" data-action="import-csv"><div class="large-icon">↑</div><strong>Import an Edulink marksheet</strong><small>CSV file • create or refresh classes • local processing</small></div><p class="muted tiny">${esc(importSummary||'Importing a newer marksheet updates matching pupils while preserving their records and seating.')}</p>`,'1. Add your classes')}${card(`<div class="dropzone" data-action="import-opp"><div class="large-icon">▤</div><strong>Drop in Word OPPs</strong><small>Select multiple DOCX files or a ZIP containing DOCX files</small></div><p class="muted tiny">${esc(oppSummary||'OPPs are matched by pupil name. Unmatched records are shown for review, never guessed.')}</p>`,'2. Add pupil support')}</div>`+
@@ -408,7 +466,7 @@ function lesson(){
 }
 function tools(){const p=currentPlan(),list=currentStudents().filter(s=>!pickerExclude||!absent.has(s.id)),asked=new Set(data.questioned[classId]||[]);return heading('Teaching tools','Random questioning, attendance exclusions and intelligent pupil grouping.')+(!classId?card(empty('No classes yet','Import a marksheet first.')):`<div class="board-tools"><label>Class${classChoices()}</label>${p?`<label>Plan version${planChoices()}</label>`:''}</div><div class="grid two">${card(`<div class="picker-stage ${pickerSpin?'is-spinning':''}"><div><small class="muted">Random pupil picker</small><br><strong data-picker-display aria-live="${pickerSpin?'off':'polite'}">${esc(pickerDisplayName())}</strong></div></div><p class="muted tiny">${asked.size} of ${list.length} pupils questioned. Pupils marked Questioned are not picked again until you reset the round.</p><label class="check"><input id="pickerExclude" type="checkbox" ${pickerExclude?'checked':''}> Exclude pupils marked absent</label><div class="button-row">${button(pickerSpin?'Spinning…':'⚄ Pick a pupil','pick-student','btn btn-primary',pickerSpin?'disabled':'')}${button('Questioned ✓','mark-questioned','btn')}${button('Absent','mark-absent-picked','btn')}${button('Reset round','reset-picker','btn')}${button('Projector view','projector-view','btn')}${button('Fullscreen picker','fullscreen-picker','btn')}</div><details><summary>Mark pupils absent (${absent.size})</summary><div class="list-scroll" style="max-height:200px">${currentStudents().map(s=>`<label class="check"><input type="checkbox" data-absent="${esc(s.id)}" ${absent.has(s.id)?'checked':''}> ${esc(s.name)}</label>`).join('')}</div></details>`,'Questioning tracker')}${card(`<form id="groupForm"><div class="field-grid"><label>Group size<input name="size" type="number" min="2" max="12" value="4"></label><label>Grouping method${choose('mode',[{value:'random',label:'Random'},{value:'mixed',label:'Mixed attainment'},{value:'similar',label:'Similar attainment'},{value:'seating',label:'Nearby seating'}])}</label></div><label class="check"><input type="checkbox" name="excludeAbsent" checked> Exclude pupils marked absent</label><div class="button-row"><button class="btn btn-primary" type="submit">Generate groups</button>${button('Print groups','print-groups','btn')}</div></form><div id="groupDisplay">${groupsDisplay(groupResult)}</div><p class="tiny muted">Group separation restrictions are respected where possible. Check flagged conflicts before using groups.</p>`,'Grouping tool')}</div>`);}
 function groupsDisplay(groups){if(!groups.length)return '<p class="muted tiny">No groups generated yet.</p>';const rules=currentPlan()?.rules||[];return `<div class="grid two" style="margin-top:15px">${groups.map((g,i)=>{let bad=g.some((s,j)=>g.some((t,k)=>k>j&&rules.some(r=>r.type==='apart'&&r.mode==='group'&&((r.a===s.id&&r.b===t.id)||(r.a===t.id&&r.b===s.id)))));return `<div class="group-result"><h3>Group ${i+1} ${bad?badge('Check restriction','red'):''}</h3><ol>${g.map(s=>`<li>${esc(s.name)}</li>`).join('')}</ol></div>`}).join('')}</div>`;}
-function backup(){return heading('Backup & restore','Your data is held in temporary memory until you explicitly download an encrypted file.')+`<div class="grid two">${card(`<div class="callout privacy"><strong>Encrypted full-session export</strong><p>Includes pupils, their OPPs and photographs, records, room templates, seating rules, all plan versions and questioning history. Encryption uses AES-256-GCM with a PBKDF2-derived key.</p></div><div class="button-row" style="margin-top:15px">${button('↓ Create encrypted backup','download-backup','btn btn-primary')}</div><p class="tiny muted">Use a unique password of at least 12 characters. Keep the file and password in your school-approved secure storage. The password cannot be recovered.</p>`,'Save locally')}${card(`<div class="notice">Restoring an encrypted backup replaces the current session. Export your current work first if you wish to keep it.</div><div class="button-row" style="margin-top:15px">${button('↑ Restore encrypted backup','restore-backup','btn btn-primary')}${button('✓ Verify downloaded backup','verify-backup','btn')}</div><p class="tiny muted">Verifying decrypts a selected file locally without changing this session. Only files created by this application are accepted. No file contents are transmitted.</p>${backupVerifyStatus?`<div class="notice" role="status">${esc(backupVerifyStatus)}</div>`:''}`,'Continue your work')}</div><div class="grid two">${card(`<p>Share room layouts without student data. This file contains only room names, desk coordinates and accessibility priorities.</p>${button('↓ Export empty room templates','export-rooms','btn')}`,'Share empty layouts')}${card(`<p>No automatic browser storage. Closing or refreshing the tab discards all unexported changes.</p>${button('Clear this session','clear-session','btn btn-danger')}`,'Privacy controls')}</div>`;}
+function backup(){return heading('Backup & restore','Your data is held in temporary memory until you explicitly download an encrypted file.')+`<div class="grid two">${card(`<div class="callout privacy"><strong>Encrypted full-session export</strong><p>Includes pupils, their OPPs and photographs, records, room templates, seating rules, all plan versions and questioning history. Encryption uses AES-256-GCM with a PBKDF2-derived key.</p></div><div class="button-row" style="margin-top:15px">${button('↓ Create encrypted backup','download-backup','btn btn-primary')}</div><p class="tiny muted">Use a unique password of at least 8 characters. Keep the file and password in your school-approved secure storage. The password cannot be recovered.</p>`,'Save locally')}${card(`<div class="notice">Restoring an encrypted backup replaces the current session. Export your current work first if you wish to keep it.</div><div class="button-row" style="margin-top:15px">${button('↑ Restore encrypted backup','restore-backup','btn btn-primary')}${button('✓ Verify downloaded backup','verify-backup','btn')}</div><p class="tiny muted">Verifying decrypts a selected file locally without changing this session. Only files created by this application are accepted. No file contents are transmitted.</p>${backupVerifyStatus?`<div class="notice" role="status">${esc(backupVerifyStatus)}</div>`:''}`,'Continue your work')}</div><div class="grid two">${card(`<p>Share room layouts without student data. This file contains only room names, desk coordinates and accessibility priorities.</p>${button('↓ Export empty room templates','export-rooms','btn')}`,'Share empty layouts')}${card(`<p>No automatic browser storage. Closing or refreshing the tab discards all unexported changes.</p>${button('Clear this session','clear-session','btn btn-danger')}`,'Privacy controls')}</div>`;}
 
 // Event delegation for ordinary controls. Data from files is escaped before being inserted into the page.
 $('#nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){goto(b.dataset.view);$('.sidebar').classList.remove('open');}});
@@ -450,6 +508,10 @@ function closeModal(){$('#modalRoot').replaceChildren();}
 const field=(name,title,value='',type='text')=>`<label>${esc(title)}<input type="${type}" name="${name}" value="${esc(value)}" ${type==='text'?'maxlength="140"':''} required></label>`;
 function showStudent(id){selectedStudent=id;profileTab='support';goto('profiles');}
 function action(id,attrs={}){try{switch(id){
+ case 'wizard-start':setupActive=true;setupPhase=data.classes.length?'next':'import';setupLastImport='';goto('setup');break;
+ case 'wizard-import-next':$('#csvFile').click();break;
+ case 'wizard-skip':case 'wizard-exit':setupActive=false;setupPhase='import';goto('dashboard');break;
+ case 'wizard-finish':setupActive=false;setupPhase='import';goto('backup');queueMicrotask(()=>backupModal());break;
  case 'import-csv':$('#csvFile').click();break;
  case 'import-opp':$('#oppFiles').click();break;case 'review-opps':reviewPendingOPPs();break;
  case 'go-rooms':goto('rooms');break;case 'go-backup':goto('backup');break;
@@ -515,7 +577,7 @@ function action(id,attrs={}){try{switch(id){
  case 'restore-backup':$('#backupFile').click();break;
  case 'verify-backup':$('#verifyBackupFile').click();break;
  case 'export-rooms':download(JSON.stringify({format:'SEATING-EMPTY-ROOMS',version:1,rooms:data.rooms},null,2),'room-layouts.json','application/json');notice('Room templates exported without student information.','success');break;
- case 'clear-session':{if(confirm('Clear all pupils, OPPs, notes, records and plans from memory? Export a backup first if needed.')){stopPickerSpin();homeworkSession=null;if(projectorWindow&&!projectorWindow.closed)projectorWindow.close();projectorWindow=null;data=initial();history=[];future=[];dirty=false;classId='';planId='';roomId=data.rooms[0].id;selectedStudent='';selectedSeat='';absent.clear();goto('dashboard');notice('Session cleared.','success');}break;}
+ case 'clear-session':{if(confirm('Clear all pupils, OPPs, notes, records and plans from memory? Export a backup first if needed.')){stopPickerSpin();homeworkSession=null;if(projectorWindow&&!projectorWindow.closed)projectorWindow.close();projectorWindow=null;data=initial();history=[];future=[];dirty=false;classId='';planId='';roomId=data.rooms[0].id;selectedStudent='';selectedSeat='';absent.clear();setupActive=false;setupPhase='import';setupLastImport='';goto('welcome');notice('Session cleared.','success');}break;}
  } }catch(e){console.error(e);notice(e.message,'error');}}
 function compareVersions(){const p=currentPlan(),others=data.plans.filter(x=>x.classId===classId&&x.id!==planId);if(!p||!others.length){notice('Create a second version to compare.');return;}openModal('Compare seating plan versions',`<p class="muted">Compare against the current version: <strong>${esc(p.name)}</strong>.</p><label>Other version${choose('other',others.map(x=>({value:x.id,label:x.name})))}</label>`,fd=>{const other=data.plans.find(x=>x.id===fd.get('other'));const reverse=x=>Object.fromEntries(Object.entries(x.assignments).map(([seat,id])=>[id,x.layout.seats.find(s=>s.id===seat)?.label||'Unknown seat']));const a=reverse(p),b=reverse(other);const moved=currentStudents().filter(s=>a[s.id]!==b[s.id]);queueMicrotask(()=>openModal('Version comparison',`<p>${esc(p.name)} compared with ${esc(other.name)}: <strong>${moved.length} pupils moved or unseated</strong>.</p><div class="list-scroll">${moved.map(s=>`<div class="list-card"><strong>${esc(s.name)}</strong><small>${esc(b[s.id]||'Unseated')} → ${esc(a[s.id]||'Unseated')}</small></div>`).join('')||'<p>No changes.</p>'}</div>`,()=>{} ,'Close'));});}
 function startHomeworkSession(){
@@ -843,6 +905,7 @@ function reviewEdulinkImport(incoming,diagnostics=[]){
   });
   importSummary=`Edulink reviewed: ${added} added, ${updated} refreshed, ${retired} marked inactive. Existing seating and records retained.`;
   notice(importSummary,'success');
+  if(setupActive){setupPhase='next';setupLastImport=importSummary;queueMicrotask(()=>goto('setup'));}
  },'Confirm reviewed import');
 }
 async function importOPPs(files){
@@ -890,8 +953,8 @@ $('#backupFile').addEventListener('change',async e=>{
   const content=await file.text();
   openModal('Restore encrypted backup',`<p class="muted">Enter the password for this encrypted file. Restoring will replace the current session.</p><label>Backup password<input type="password" name="password" required autocomplete="off"></label><div class="alert">Export a new backup first if you need to preserve unbacked changes.</div>`,async fd=>{
    const restored=validateBackup(await decryptBackup(content,String(fd.get('password'))));
-   if(!confirm('Replace the current session? Changes not backed up will be discarded.'))return;
-   stopPickerSpin();homeworkSession=null;if(projectorWindow&&!projectorWindow.closed)projectorWindow.close();projectorWindow=null;data=restored;history=[];future=[];dirty=false;classId=data.classes[0]?.id||'';roomId=data.rooms[0]?.id||'';planId=data.plans.find(p=>p.classId===classId)?.id||'';selectedStudent='';selectedSeat='';absent.clear();render();notice('Encrypted session restored locally.','success');
+   if((dirty||data.students.length||data.assessments.length||data.records.length)&&!confirm('Replace the current session? Changes not backed up will be discarded.'))return;
+   stopPickerSpin();homeworkSession=null;if(projectorWindow&&!projectorWindow.closed)projectorWindow.close();projectorWindow=null;setupActive=false;setupPhase='import';setupLastImport='';view='dashboard';data=restored;history=[];future=[];dirty=false;classId=data.classes[0]?.id||'';roomId=data.rooms[0]?.id||'';planId=data.plans.find(p=>p.classId===classId)?.id||'';selectedStudent='';selectedSeat='';absent.clear();render();notice('Encrypted session restored locally.','success');
   },'Decrypt and restore');
  }catch(err){notice(err.message,'error');}
 });
