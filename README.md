@@ -98,7 +98,7 @@ This version references the original `Seating Plan Tool Final DTA Staff Copy.xls
 - **Questioned/absent:** picking a name no longer marks it questioned. Use **Questioned ✓** or **Absent** explicitly; reset the round for a new lesson. Optional exclusions prevent calling on absent pupils.
 - **Behaviour:** pupil-level incident totals by category, editable categories and existing dated records.
 - **Class overview:** attainment vs target, data quality, class demographics and homework/behaviour counts. Includes teacher-controlled local CSV export without OPP text or SEND/PP fields.
-- **Privacy:** hide confidential indicators on the live seating plan, use the name-only projector, or select the top-bar **Privacy lock** to conceal the workspace instantly.
+- **Privacy:** hide confidential indicators on the live seating plan, use the name-only projector, or select the top-bar **Privacy lock** (also **Alt+L**) to conceal the workspace instantly. It also closes open dialogs and projector windows. This is a visual privacy screen, **not a password-protected security lock**.
 - **Pupil card labels:** show seat numbers and imported More Able / A-level Internal/External indicators when provided, without requiring photographs.
 - **Restore previous seating:** restore the last generated/cleared arrangement in a plan version, in addition to the existing Undo and saved versions.
 
