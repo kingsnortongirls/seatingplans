@@ -102,12 +102,12 @@ function setup(){
  <p>Find your year-group profiles in:</p>
  <div class="onboarding-folder-path" role="note"><strong>Staffshare</strong><span>›</span><strong>Inclusion</strong><span>›</span><strong>Inclusion Matters</strong><span>›</span><strong>One Page Profiles</strong></div>
  <div class="onboarding-file-types">
- <div><strong>Option A · ZIP file</strong><small>Select a ZIP containing the year group's Word profiles.</small></div>
- <div><strong>Option B · Multiple Word files</strong><small>Select multiple .docx files from the folder together.</small></div></div>
+ <div><strong>Option A · ZIP file</strong><small>Select a year-group ZIP containing Word and/or PDF profiles.</small></div>
+ <div><strong>Option B · Multiple PDF / Word files</strong><small>Select several .pdf and .docx files together.</small></div></div>
  <div class="onboarding-file-drop" data-opp-drop="true">
  <span class="onboarding-symbol" aria-hidden="true">▤</span>
- <p>Drag a ZIP or a collection of Word profiles here, or browse your files.</p>
- ${button('Choose ZIP or Word OPP files','wizard-import-opp','btn btn-primary onboarding-main-action')}
+ <p>Drag a ZIP or multiple PDF/Word profiles here, or browse your files.</p>
+ ${button('Choose PDF, Word or ZIP OPP files','wizard-import-opp','btn btn-primary onboarding-main-action')}
  <small>Files are processed only in this browser. Pupil names are matched carefully; ambiguous matches need confirmation.</small>
  </div>
  <div class="onboarding-opp-actions">${button('Skip OPP import for now','wizard-skip-opp','btn')}</div>
@@ -147,7 +147,7 @@ function dashboard(){const pupils=currentStudents();return heading('Welcome to S
   ['4','Save a backup','go-backup','backup']
  ].map(([num,name,act,icon])=>`<button type="button" class="workflow-step" data-action="${act}"><span class="workflow-step-num">${num}</span>${uiIcon(icon)}<span>${name}</span>${uiIcon('arrow')}</button>`).join('')}</div></section>
  <div class="grid four">${stat(data.classes.length,'Classes','Imported from Edulink')}${stat(data.students.length,'Pupils','Session memory only')}${stat(data.rooms.length,'Room layouts','Fully editable')}${stat(data.plans.length,'Plan versions','Included in backups')}</div>`+
- `<div class="grid two">${card(`<div class="dropzone" data-action="import-csv"><div class="large-icon">↑</div><strong>Import an Edulink marksheet</strong><small>CSV file • create or refresh classes • local processing</small></div><p class="muted tiny">${esc(importSummary||'Importing a newer marksheet updates matching pupils while preserving their records and seating.')}</p>`,'1. Add your classes')}${card(`<div class="dropzone" data-action="import-opp"><div class="large-icon">▤</div><strong>Drop in Word OPPs</strong><small>Select multiple DOCX files or a ZIP containing DOCX files</small></div><p class="muted tiny">${esc(oppSummary||'OPPs are matched by pupil name. Unmatched records are shown for review, never guessed.')}</p>`,'2. Add pupil support')}</div>`+
+ `<div class="grid two">${card(`<div class="dropzone" data-action="import-csv"><div class="large-icon">↑</div><strong>Import an Edulink marksheet</strong><small>CSV file • create or refresh classes • local processing</small></div><p class="muted tiny">${esc(importSummary||'Importing a newer marksheet updates matching pupils while preserving their records and seating.')}</p>`,'1. Add your classes')}${card(`<div class="dropzone" data-action="import-opp"><div class="large-icon">▤</div><strong>Drop in PDF or Word OPPs</strong><small>Select PDF/DOCX files or a mixed ZIP archive</small></div><p class="muted tiny">${esc(oppSummary||'OPPs are matched by pupil name. Unmatched records are shown for review, never guessed.')}</p>`,'2. Add pupil support')}</div>`+
  `<div class="grid two">${card(data.classes.length?data.classes.map(c=>`<div class="list-card"><div><strong>${esc(c.name)}</strong><small>${data.students.filter(s=>s.classId===c.id).length} pupils · ${data.plans.filter(p=>p.classId===c.id).length} plan version(s)</small></div>${button('Open','open-class','btn btn-small',`data-id="${esc(c.id)}"`)}</div>`).join(''):empty('No classes imported','Use the Edulink marksheet importer above. No school data is stored on the site.'),'Your classes')}${card(`<p>Use the standard four-row, 2-4-2 classroom, or create custom layouts.</p><div class="list-card"><div><strong>Room designer</strong><small>Move desks, mark accessible seats and edit classroom templates</small></div>${button('Design','go-rooms','btn btn-small')}</div><div class="list-card"><div><strong>Backups</strong><small>Encrypted local export and restore, including all versions</small></div>${button('Open','go-backup','btn btn-small')}</div>`,'Next steps')}</div>`;
 }
 function seatMarkup(layout,assignment={},opts={}){const showPrivate=opts.teacher!==false&&!hideIndicators&&!privacyLocked;return `<div class="canvas ${layout.kind==='it3'?'it3':layout.kind==='it2'?'it2':''}" id="roomCanvas" data-mode="${opts.mode||'seating'}"><div class="board">WHITEBOARD / FRONT</div><div class="teacher-desk" style="left:${layout.teacher?.x??78}%;top:${layout.teacher?.y??7}%" data-desk="teacher">TEACHER DESK</div>${layout.kind==='it3'?'<div class="it3-island" aria-hidden="true"></div>':layout.kind==='it2'?'<div class="it2-table it2-left"></div><div class="it2-table it2-right"></div><div class="it2-table it2-middle"></div><div class="it2-table it2-upper-left"></div><div class="it2-table it2-upper-right"></div><div class="it2-table it2-lower-left"></div><div class="it2-table it2-lower-right"></div>':''}${layout.seats.map(seat=>{const s=student(assignment[seat.id]),grade=s&&showPrivate?gradeGap(s):null,locked=(currentPlan()?.locks||[]).includes(seat.id),selected=selectedSeat===seat.id,hwMissing=!!(s&&homeworkSession?.classId===classId&&homeworkSession.missing.includes(s.id));return `<button type="button" class="seat ${selected?'selected':''} ${seatMoveSource===seat.id?'move-source':''} ${!s?'unassigned':''} ${locked?'locked':''} ${hwMissing?'homework-missing':''} ${grade?'grade-'+grade.band:''} ${s&&s.id===lastPicked?'picked-pupil':''}" data-seat="${esc(seat.id)}" data-priority="${esc(seat.priority||'normal')}" style="left:${Number(seat.x)}%;top:${Number(seat.y)}%;rotate:${Number(seat.rotation)||0}deg" title="${s?esc(s.name)+' · View pupil support':opts.mode==='rooms'?'Edit seat '+esc(seat.label):'Empty seat'}" aria-label="${s?esc(s.name)+' · View pupil support summary':opts.mode==='rooms'?'Edit seat '+esc(seat.label):'Empty seat'}"><strong>${s?esc(short(s.name,22)):opts.mode==='rooms'?'Seat '+esc(seat.label):'+'}</strong>${s?`${showPrivate?seatTagMarkup(s):''}<small class="pupil-private seat-meta">${showPrivate?esc(gradeSummary(s)):''}</small>`:opts.mode==='rooms'?`<small>${esc(seat.priority)}</small>`:''}</button>`}).join('')}</div>`;}
@@ -619,7 +619,7 @@ $('#app').addEventListener('drop',e=>{
  if(drop&&view==='setup'&&setupActive&&setupPhase==='opp'){
   e.preventDefault();
   const files=[...(e.dataTransfer?.files||[])];
-  if(!files.length){notice('Drop a ZIP or Word file, or use Choose ZIP or Word OPP files.');return;}
+  if(!files.length){notice('Drop PDFs, Word files or ZIP archives, or browse your files.');return;}
   importOPPs(files).catch(err=>notice(err.message,'error'));
   return;
  }
@@ -1085,7 +1085,7 @@ function reviewEdulinkImport(incoming,diagnostics=[]){
 async function importOPPs(files){
  if(!files.length)return;
  if(!data.students.length){notice('Import an Edulink class list before importing OPPs.','error');return;}
- notice('Reading Word documents locally…');
+ notice('Reading Word and PDF documents locally…');
  const entries=await readOppFiles(files);
  let matched=0,unmatched=0,errors=[];
  mutation(()=>{
