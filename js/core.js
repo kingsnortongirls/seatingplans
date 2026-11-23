@@ -164,7 +164,7 @@ export function defaultRoom(name='Standard 2-4-2') {
   seats.push({id:uid(),label:String(row*8+i+1),x:xs[i],y:24+row*18,rotation:0,
    priority:'normal',group:'R'+(row+1)+'-'+(i<2?'L':i<6?'C':'R')});
  }
- return {id:uid(),name,seats,teacher:{x:78,y:7},board:'front'};
+ return {id:uid(),name,preset:'242',seats,teacher:{x:78,y:7},board:'front'};
 }
 export function buildPreset(kind,name) {
  if(kind==='242')return defaultRoom(name||'Standard 2-4-2');
@@ -178,7 +178,7 @@ export function buildPreset(kind,name) {
   [30,40,50,60,70,80,90].forEach(y=>add(92,y,'IT3-Right'));
   [26,36,46,56,66,76].forEach(x=>add(x,40,'IT3-Island-North'));
   [26,36,46,56,66,76].forEach(x=>add(x,65,'IT3-Island-South'));
-  return {id:uid(),name:name||'IT3',kind:'it3',seats,teacher:{x:76,y:90},board:'back'};
+  return {id:uid(),name:name||'IT3',kind:'it3',preset:'it3',seats,teacher:{x:76,y:90},board:'back'};
  }
  if(kind==='it2'){
   // IT2: 33 usable positions from the classroom photograph. Empty chairs
@@ -197,13 +197,13 @@ export function buildPreset(kind,name) {
   [72,82].forEach(x=>add(x,13,'IT2-Upper-Right'));
   [28,38].forEach(x=>add(x,90,'IT2-Lower-Left'));
   [72,82].forEach(x=>add(x,90,'IT2-Lower-Right'));
-  return {id:uid(),name:name||'IT2',kind:'it2',seats,teacher:{x:55,y:86},board:'back'};
+  return {id:uid(),name:name||'IT2',kind:'it2',preset:'it2',seats,teacher:{x:55,y:86},board:'back'};
  }
  const seats=[];const add=(x,y,row,col,group)=>seats.push({id:uid(),label:String(seats.length+1),x,y,rotation:0,priority:'normal',group});
  if(kind==='pairs')for(let row=0;row<4;row++)for(let pair=0;pair<4;pair++)for(let col=0;col<2;col++)add(9+pair*23+col*9,24+row*18,row,col,'R'+row+'P'+pair);
  if(kind==='groups')for(let r=0;r<2;r++)for(let c=0;c<4;c++)for(let i=0;i<4;i++)add(12+c*23+(i%2)*9,32+r*36+Math.floor(i/2)*10,r,i,'G'+r+c);
  if(kind==='u')for(let i=0;i<32;i++){const ang=Math.PI+(Math.PI*i/31);add(50+40*Math.cos(ang),48+34*Math.sin(ang),0,i,'U'+Math.floor(i/4));}
- return {id:uid(),name:name||({pairs:'Paired desks',groups:'Grouped tables',u:'U shape'}[kind]||'Custom room'),seats,teacher:{x:78,y:7},board:'front'};
+ return {id:uid(),name:name||({pairs:'Paired desks',groups:'Grouped tables',u:'U shape'}[kind]||'Custom room'),preset:kind,seats,teacher:{x:78,y:7},board:'front'};
 }
 export function newPlan(classId,room,label) {
  return {id:uid(),classId,roomId:room.id,name:label||'Autumn 1',created:new Date().toISOString(),
