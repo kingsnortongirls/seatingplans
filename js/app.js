@@ -135,6 +135,56 @@ function classOverview(){
  card('<div class="table-wrap"><table><thead><tr><th>Pupil</th><th>Current</th><th>Target</th><th>Difference</th><th>Homework</th><th>Behaviour</th></tr></thead><tbody>'+rows+'</tbody></table></div>','Pupil class overview')+
  card(quality,'Import data quality');
 }
+
+function strategyModal(id){
+ const s=student(id);
+ if(!s)return;
+ const body='<p class="muted tiny">These are the teacher-maintained fields from the original workbook, separate from the imported OPP. They stay with a matched pupil after an Edulink refresh.</p>'+
+ '<label>Agreed teaching strategies<textarea name="strategies" maxlength="4000" rows="5">'+esc(s.strategies||'')+'</textarea></label>'+
+ '<label>What helps me learn (pupil voice)<textarea name="voice" maxlength="4000" rows="4">'+esc(s.pupilVoice||'')+'</textarea></label>'+
+ '<label>Reviewed date<input type="date" name="reviewDate" value="'+esc(s.reviewedDate||isoDate())+'"></label>';
+ openModal('Review teaching strategies: '+s.name,body,fd=>mutation(()=>{
+  s.strategies=clean(fd.get('strategies'));s.pupilVoice=clean(fd.get('voice'));s.reviewedDate=String(fd.get('reviewDate')||'');
+ }), 'Save reviewed strategies');
+}
+function yearRolloverModal(){
+ const cls=currentClass(),list=currentStudents();
+ if(!cls)return;
+ const y=new Date().getFullYear()+1;
+ openModal('Academic-year rollover','<div class="alert">This creates a separate teaching group. The original class, seating versions, incident records and assessment history are retained in the encrypted workspace. This does not automatically save a backup.</div>'+
+ '<p>Currently selected: <strong>'+esc(cls.name)+'</strong> · '+list.length+' active pupils</p>'+
+ '<label>New class name<input required name="name" maxlength="140" value="'+esc(cls.name+' '+y+'–'+(y+1))+'"></label>'+
+ '<label class="check"><input type="checkbox" name="archive" checked> Mark the previous teaching group archived (keep all original records)</label>'+
+ '<p class="tiny muted">Pupil identities, imported information, OPPs and reviewed strategies are copied. Old assessments and behaviour records remain linked to the original teaching group. New pupils receive fresh internal IDs.</p>',
+ fd=>{
+  const name=clean(fd.get('name'));
+  if(!name||data.classes.some(c=>c.name.toLowerCase()===name.toLowerCase()))throw new Error('Enter a unique new teaching group name.');
+  mutation(()=>{
+   const newClass={id:uid(),name,assessmentHeaders:[...(cls.assessmentHeaders||[])],selectedAssessment:cls.selectedAssessment||'',archived:false};
+   data.classes.push(newClass);
+   for(const s of list){const copy=clone(s);copy.id=uid();copy.classId=newClass.id;copy.previousStudentId=s.id;copy.active=true;copy.current='';copy.gradeColumns={};data.students.push(copy);}
+   data.yearRollovers.push({id:uid(),fromClassId:cls.id,toClassId:newClass.id,date:isoDate(),studentCount:list.length});
+   if(fd.has('archive'))cls.archived=true;
+   classId=newClass.id;planId='';selectedStudent='';selectedSeat='';
+  });
+  notice('New teaching group created. Import a fresh Edulink marksheet to refresh its assessments. Back up the workspace before closing.','success');
+ },'Create new teaching group');
+}
+function exportClassSummary(){
+ const cls=currentClass();if(!cls)return;
+ if(!confirm('Export an unencrypted CSV containing pupil names and assessment results? Store it only in a school-approved secure location.'))return;
+ const records=data.records.filter(r=>r.classId===classId);
+ const rows=[['Pupil','Current','Target','Grade gap','Missing homework','Behaviour incidents']];
+ for(const s of currentStudents()){
+  const diff=gradeGap(s)?.gap;
+  rows.push([s.name,s.current||'',s.target||'',diff===undefined?'':String(diff),
+   String(records.filter(r=>r.studentId===s.id&&r.type==='homework'&&r.status==='Missing').length),
+   String(records.filter(r=>r.studentId===s.id&&r.type==='behaviour').length)]);
+ }
+ const csv=rows.map(row=>row.map(value=>'"'+String(value).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+ download(csv,'class-overview-'+isoDate()+'.csv','text/csv;charset=utf-8');
+ notice('Teacher summary exported locally. No OPP or SEND/PP fields were included.','success');
+}
 function profiles(){const list=currentStudents().filter(s=>s.name.toLowerCase().includes(searchTerm.toLowerCase()));return heading('Pupil profiles','Teacher-only information from Edulink and locally imported One Page Profiles.',button('↑ Import OPPs','import-opp','btn btn-primary')+(data.pendingOPPs?.length?button('Review '+data.pendingOPPs.length+' OPP match(es)','review-opps','btn'):''))+ (!data.classes.length?card(empty('No pupils yet','Import your Edulink CSV from the dashboard.')):`<div class="board-tools"><label>Class${classChoices()}</label><label>Search pupils<input id="pupilSearch" placeholder="Search name" value="${esc(searchTerm)}"></label></div><div class="grid two">${card(`<div class="list-scroll profile-list">${list.map(s=>`<button type="button" class="pupil-chip ${selectedStudent===s.id?'selected':''}" data-action="select-profile" data-id="${esc(s.id)}"><strong>${esc(s.name)}</strong><span class="pill ${s.opp?'green':'grey'}">${s.opp?'OPP':'No OPP'}</span></button>`).join('')||empty('No results','Try a different name.')}</div>`,'Class pupils')}${card(selectedStudent&&student(selectedStudent)?.classId===classId?profileDetails(student(selectedStudent)):empty('Select a pupil','Open their Edulink information, OPP guidance, attainment and teacher records.'),'Pupil information')}</div>`);}
 function profileDetails(s){let opp=s.opp||{};let head=`<div class="profile-head">${opp.photo&&/^data:image\/(png|jpeg|webp);base64,/.test(opp.photo)?`<img class="avatar" src="${opp.photo}" alt="Pupil photograph">`:'<div class="avatar">♙</div>'}<div><h2>${esc(s.name)}</h2><div class="tag-list">${s.send?badge('SEND '+s.send):''}${s.pp?badge('PP '+s.pp):''}${s.prior?badge('PA '+s.prior):''}${s.eal?badge('EAL '+s.eal):''}${s.more&&/^(yes|y|true|1)$/i.test(s.more)?badge('More Able'):''}${s.internalExternal?badge('KS5 '+s.internalExternal):''}</div></div></div><div class="tabbar">${['support','attainment','history'].map(t=>`<button class="tab ${profileTab===t?'active':''}" data-action="profile-tab" data-tab="${t}">${{support:'OPP / strategies',attainment:'Attainment',history:'Records'}[t]}</button>`).join('')}</div>`;
  if(profileTab==='attainment')return head+(gradeGap(s)?`<div class="grade-summary grade-${gradeGap(s).band}"><strong>${esc(gradeGap(s).label)}</strong> · Current ${esc(s.current)} / Target ${esc(s.target)}</div>`:'')+`<div class="grid two">${[['Target',s.target],['Current',s.current],['Reading age',s.readingAge],['Reading SS',s.readingSS],['Spelling age',s.spellingAge],['Spelling SS',s.spellingSS],['KS2 Reading',s.ks2Reading],['KS2 Maths',s.ks2Maths]].map(([t,v])=>`<div class="notice"><small>${esc(t)}</small><strong style="display:block;font-size:17px;margin-top:4px">${esc(v||'Not supplied')}</strong></div>`).join('')}</div><p class="tiny muted">Assessment grades are shown as supplied by Edulink; no numeric grade gap is invented for missing or non-numeric grades.</p>`;
