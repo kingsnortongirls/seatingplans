@@ -63,7 +63,7 @@ These changes retain the strict **local only, no automatic student-data storage*
 ### Teacher-only teaching features
 
 - **Projector view:** opens a separate name-only classroom view. Pupil names and their positions are the only pupil information copied into its page. SEND/PP, OPP content, attainment, notes and photographs are not included. Reopen the projector view to focus it; the random name picker highlights the selected seat and can request full-screen display, depending on browser permissions.
-- **GCSE attainment bands:** numeric current/target grades 1 to 9 are shown as a five-colour indicator: 2+ below, 1 below, on target, 1 above, 2+ above. Non-numeric or missing grades are not compared. Pupil printouts hide this indicator.
+- **Attainment bands:** comparable GCSE 9–1 or A-level A*–U current/target grades are shown as a five-colour indicator: 2+ below, 1 below, on target, 1 above, 2+ above. Mixed scales, unknown grades or missing results are not compared. Pupil printouts hide this indicator.
 - **OPP seating prompts:** click **OPP seating prompts** to inspect original wording from the imported OPP. A teacher must interpret the guidance and explicitly confirm any pupil-specific seat preference or mandatory rule; the application does not automatically infer one.
 - **Plan notes:** each seating plan version can have private teacher rationale/review notes, retained in the encrypted backup.
 - **Random picker improvements:** the teacher's seating plan marks the selected pupil's seat; an optional name-only projector window updates when pupils are selected. No photography is added to seating cards.
