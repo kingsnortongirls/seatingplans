@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { readEdulink,buildEdulinkReview,gradeGap,gradeValue,assessmentGap,assessmentHistory,
-  classQuality,defaultRoom,buildPreset,newPlan,placeStudent,autoSeat,oppSeatingHints,auditRules } from '../js/core.js';
+  classQuality,isLateRecord,isBehaviourRecord,defaultRoom,buildPreset,newPlan,placeStudent,autoSeat,oppSeatingHints,auditRules } from '../js/core.js';
 
 // Entirely synthetic. Never add actual school information to tests.
 const csv=[
@@ -28,6 +28,23 @@ const klass={id:'class',name:'9X/CS',assessmentHeaders:parsed.assessmentHeaders,
 const quality=classQuality([{...parsed.students[0],id:'a',classId:'class',active:true}], [klass],'class');
 assert.equal(quality.emptySelected.length,0);
 assert.equal(quality.total,1);
+
+const olderGrades=classQuality([
+ {id:'old1',name:'Example One',classId:'class',active:true,target:'7',current:'6',send:'',pp:''},
+ {id:'old2',name:'Example Two',classId:'class',active:true,target:'7',current:'7',send:'N',pp:'No'}
+], [klass], 'class');
+assert.equal(olderGrades.emptySelected.length,0,'Older imports with current grades are complete');
+assert.ok(!('missingSEND' in olderGrades),'Blank SEND is not an import error');
+assert.ok(!('missingPP' in olderGrades),'Blank PP is not an import error');
+const datedLateness={id:'L1',type:'late',category:'Late to lesson',date:'2026-11-23',studentId:'old1',minutesLate:5,lesson:'Period 3'};
+const historicLateness={id:'L2',type:'behaviour',category:'Late to lesson',date:'2026-11-22',studentId:'old1'};
+const otherBehaviour={id:'B1',type:'behaviour',category:'Disruption',date:'2026-11-21',studentId:'old2'};
+assert.ok(isLateRecord(datedLateness));
+assert.ok(isLateRecord(historicLateness));
+assert.ok(!isBehaviourRecord(historicLateness),'Historical lateness must not double-count as other behaviour');
+assert.ok(isBehaviourRecord(otherBehaviour));
+assert.equal([datedLateness,historicLateness,otherBehaviour].filter(isLateRecord).length,2);
+
 const proposal=buildEdulinkReview([klass],[{id:'x',classId:'class',name:'Changed Name',externalId:'T-100'}],parsed.students);
 assert.equal(proposal.items[0].suggestedId,'x');
 assert.equal(proposal.items[1].status,'new');
