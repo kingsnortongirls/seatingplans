@@ -1,4 +1,4 @@
-import {uid,clone,clean,esc,short,nameKey,isoDate,readEdulink,buildEdulinkReview,readOppFiles,defaultRoom,buildPreset,newPlan,placeStudent,autoSeat,auditRules,issuesFor,accessReport,gradeGap,gradeValue,assessmentGap,assessmentHistory,classQuality,oppSeatingHints,makeGroups,encryptBackup,decryptBackup,validateBackup} from './core.js';
+import {uid,clone,clean,esc,short,nameKey,isoDate,readEdulink,buildEdulinkReview,readOppFiles,defaultRoom,buildPreset,newPlan,placeStudent,autoSeat,auditRules,issuesFor,accessReport,gradeGap,gradeValue,assessmentGap,assessmentHistory,classQuality,isLateRecord,isBehaviourRecord,oppSeatingHints,makeGroups,encryptBackup,decryptBackup,validateBackup} from './core.js';
 
 // Everything below exists in memory only. No localStorage, cookies, IndexedDB, API calls or telemetry.
 const initial=()=>({schema:1,classes:[],students:[],rooms:[defaultRoom(),buildPreset('it3','IT3'),buildPreset('it2','IT2')],plans:[],records:[],assessments:[],questioned:{},questioningLog:[],yearRollovers:[],pendingOPPs:[],categories:['Late to lesson','Homework not submitted','Truancy','Lack of effort','Disrespect','Missing equipment','Disruption','Not following instructions','Incomplete classwork','Other']});
@@ -125,32 +125,35 @@ function assessmentModal(id=''){
 function classOverview(){
  const cls=currentClass(),list=currentStudents();if(!cls)return heading('Class overview','Pupil monitoring and import quality.')+card(empty('No class','Import a class first.'));
  const qc=classQuality(data.students,data.classes,classId),records=data.records.filter(x=>x.classId===classId);
- const send=list.filter(s=>s.send&&!/^(n|no|none)$/i.test(s.send)).length;
- const pp=list.filter(s=>/^(yes|y|true|1|pp)$/i.test(s.pp)).length;
- const eal=list.filter(s=>/^(yes|y|true|1)$/i.test(s.eal)).length;
+ const send=list.filter(s=>s.send&&!/^(n|no|none|false|0)$/i.test(clean(s.send))).length;
+ const pp=list.filter(s=>/^(yes|y|true|1|pp|eligible|pupil premium)$/i.test(clean(s.pp))).length;
+ const eal=list.filter(s=>/^(yes|y|true|1)$/i.test(clean(s.eal))).length;
  const below=list.filter(s=>gradeGap(s)?.gap<0).length;
+ const late=records.filter(isLateRecord),behaviour=records.filter(isBehaviourRecord);
  const rows=list.map(s=>{
-  const behavior=records.filter(r=>r.studentId===s.id&&r.type==='behaviour').length;
+  const behaviourCount=behaviour.filter(r=>r.studentId===s.id).length;
+  const lateCount=late.filter(r=>r.studentId===s.id).length;
   const hw=records.filter(r=>r.studentId===s.id&&r.type==='homework'&&r.status==='Missing').length;
-  return '<tr><td>'+button(esc(s.name),'open-overview-pupil','btn btn-small','data-id="'+esc(s.id)+'"')+'</td><td>'+esc(s.current||'–')+'</td><td>'+esc(s.target||'–')+'</td><td>'+esc(gradeGap(s)?.label||'Not comparable')+'</td><td>'+hw+'</td><td>'+behavior+'</td></tr>';
+  return '<tr><td>'+button(esc(s.name),'open-overview-pupil','btn btn-small','data-id="'+esc(s.id)+'"')+'</td><td>'+esc(s.current||'–')+'</td><td>'+esc(s.target||'–')+'</td><td>'+esc(gradeGap(s)?.label||'Not comparable')+'</td><td>'+hw+'</td><td>'+lateCount+'</td><td>'+behaviourCount+'</td></tr>';
  }).join('');
  const issues=[
   ['Duplicate pupil names',qc.duplicates],
   ['Missing target grades',qc.missingTarget],
-  ['Missing selected COTTA',qc.emptySelected],
-  ['Missing SEND field',qc.missingSEND],
-  ['Missing PP field',qc.missingPP]
+  ['Missing selected COTTA',qc.emptySelected]
  ];
- const quality='<div class="grid three">'+stat(qc.duplicates.length,'Duplicates','Review identity')+stat(qc.missingTarget.length,'Missing targets','Source check')+stat(qc.emptySelected.length,'Missing COTTA','Source check')+'</div><div class="list-scroll" style="max-height:280px">'+
- issues.filter(x=>x[1].length).map(x=>'<p><strong>'+esc(x[0])+':</strong> '+esc(x[1].slice(0,30).join(', '))+(x[1].length>30?' and '+(x[1].length-30)+' more':'')+'</p>').join('')+
- (!issues.some(x=>x[1].length)?'<p>No missing mapped assessment or target fields detected.</p>':'')+(cls.importWarnings||[]).map(w=>'<p class="alert"><strong>Import warning:</strong> '+esc(w)+'</p>').join('')+'</div>';
+ const issueRows=issues.filter(x=>x[1].length);
+ const quality='<div class="grid three">'+stat(qc.duplicates.length,'Duplicates','Review identity')+stat(qc.missingTarget.length,'Missing targets','Source check')+stat(qc.emptySelected.length,'Missing COTTA','Check chosen assessment')+'</div><div class="list-scroll" style="max-height:220px">'+
+ issueRows.map(x=>'<p><strong>'+esc(x[0])+':</strong> '+esc(x[1].slice(0,16).join(', '))+(x[1].length>16?' and '+(x[1].length-16)+' more':'')+'</p>').join('')+
+ (!issueRows.length?'<p>No duplicate names or missing selected assessment/target values detected.</p>':'')+
+ (cls.importWarnings||[]).map(w=>'<p class="alert"><strong>Import warning:</strong> '+esc(w)+'</p>').join('')+'</div>';
  return heading('Class overview','Class attainment, confidential teacher records and data-quality checks.',
  button('Assessment history','go-assessments','btn')+button('Year rollover','year-rollover','btn')+button('Export overview','export-class-summary','btn'))+
  '<div class="board-tools"><label>Class'+classChoices()+'</label></div>'+
- '<div class="grid four">'+stat(list.length,'Pupils','Active class register')+stat(send,'SEND','From Edulink')+stat(pp,'PP','From Edulink')+stat(eal,'EAL','From Edulink')+
+ '<div class="grid four">'+stat(list.length,'Pupils','Active class register')+stat(send,'SEND','Flagged pupils')+stat(pp,'PP','Flagged pupils')+stat(eal,'EAL','Flagged pupils')+
  stat(below,'Below target','Comparable COTTA')+stat(records.filter(r=>r.type==='homework'&&r.status==='Missing').length,'Missing homework','Open records')+
- stat(records.filter(r=>r.type==='behaviour').length,'Behaviour incidents','All recorded')+stat(data.assessments.filter(a=>a.classId===classId).length,'Assessments','Saved results')+'</div>'+
- card('<div class="table-wrap"><table><thead><tr><th>Pupil</th><th>Current</th><th>Target</th><th>Difference</th><th>Homework</th><th>Behaviour</th></tr></thead><tbody>'+rows+'</tbody></table></div>','Pupil class overview')+
+ stat(late.length,'Late arrivals','All recorded')+stat(behaviour.length,'Other behaviour','All recorded')+
+ stat(data.assessments.filter(a=>a.classId===classId).length,'Assessments','Saved results')+'</div>'+
+ card('<div class="table-wrap"><table><thead><tr><th>Pupil</th><th>Current</th><th>Target</th><th>Difference</th><th>Homework</th><th>Late</th><th>Behaviour</th></tr></thead><tbody>'+rows+'</tbody></table></div>','Pupil class overview')+
  card(quality,'Import data quality');
 }
 
