@@ -27,11 +27,11 @@ A fully client-side seating plan and teaching toolkit designed for static hostin
 
 ## IT3 preset
 
-The **IT3** room is available immediately in the Room Designer, including a central island and teacher desk at the front. Choose **IT3 · 34 seats** in the layout preset menu for another room. Staff can still move individual seats or edit accessibility priorities. Preset geometry, custom room edits and seating assignments are included in encrypted local backups. The photograph and pupil names from the reference screenshot are **not** committed or included in the application.
+The **IT3** room is available immediately in the Room Designer, including a central island with both the whiteboard and teacher desk at the bottom of the plan (the teaching front). Choose **IT3 · 34 seats** in the layout preset menu for another room. Staff can still move individual seats or edit accessibility priorities. Preset geometry, custom room edits and seating assignments are included in encrypted local backups. The photograph and pupil names from the reference screenshot are **not** committed or included in the application.
 
 ## IT2 preset
 
-The **IT2** classroom is also available immediately in Room Designer as a 33-seat preset, including all 8 usually unoccupied positions: four on the upper desks, two at the lower-left table, one on the left bank and one in the central block. The whiteboard is along the lower wall to follow the screenshot layout, with the movable teacher desk beside it. Empty positions remain real, assignable seats, not permanently blocked chairs. No names or photographs from the reference screenshot are included.
+The **IT2** classroom is also available immediately in Room Designer as a 33-seat preset, including all 8 usually unoccupied positions: four on the upper desks, two at the lower-left table, one on the left bank and one in the central block. The whiteboard and movable teacher desk are both at the bottom of the plan, matching IT3. 'Front' seating priority correctly means closer to the lower edge for these two rooms. Empty positions remain real, assignable seats, not permanently blocked chairs. No names or photographs from the reference screenshot are included.
 
 ## Install on GitHub Pages
 
