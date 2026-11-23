@@ -44,7 +44,7 @@ function pdfObjects(data){
   const body=text.slice(start,end),mark=/\bstream(?:\r\n|\n|\r)/.exec(body);
   if(!mark){objects.set(id,{dict:body});continue;}
   const at=start+mark.index+mark[0].length;
-  const direct=/\/Length\s+(\d+)(?!\s+\d+\s+R)/.exec(body.slice(0,mark.index));
+  const direct=/\/Length\s+(\d+)\b(?!\s+\d+\s+R)/.exec(body.slice(0,mark.index));
   let finish=direct?at+Number(direct[1]):-1;
   if(finish<at||finish>end){finish=text.indexOf('endstream',at);if(finish<0||finish>end)continue;
    while(/\s/.test(text[finish-1]||'')&&finish>at)finish--;}
