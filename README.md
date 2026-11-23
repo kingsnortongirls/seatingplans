@@ -86,6 +86,34 @@ Nothing is changed until the **Review proposed seating plan** screen is explicit
 
 `python tests/privacy_e2e.py` uses localhost and synthetic pupils to test the real (not disabled) Content Security Policy, verify name-only projector output, block an attempted external POST, round-trip the encrypted backup and restore it into a clean browser session. `python tests/smoke.py` covers the general interface; `node tests/crypto.mjs` checks encryption and decryption. The test suite requires locally installed Playwright and Chromium. **Only synthetic pupil records should ever be used in these tests.** The application is still subject to school IT and data-protection approval.
 
+## Original Excel workbook parity and in-lesson improvements (November 2026)
+
+This version references the original `Seating Plan Tool Final DTA Staff Copy.xlsm`, including **Start here**, **Import settings**, **Pupil strategies**, **Behaviour log**, and **Assessment history**.
+
+### Restored original workflows
+- **Task timer:** dedicated local countdown within Lesson mode, with 2/5/10/15/20/30 minute presets, custom duration, pause/resume and fullscreen.
+- **COTTA choice:** Edulink imports retain all recognised assessment column headings and their per-pupil values. Assessment history includes a class-specific **Displayed Edulink COTTA** dropdown that updates the grade shown on pupil cards. A reviewed CSV import reports missing required headings and duplicates.
+- **Teacher assessments:** enter, edit, or delete dated results with a result, target and notes, independently of Edulink. Results survive a class refresh and appear in each pupil's history and progress chart. Pupil cards show both selected COTTA and latest manually saved result.
+- **Pupil strategies:** separate teacher-maintained **Agreed teaching strategies**, **What helps me learn (pupil voice)**, and **Reviewed date** fields, preserved on matching Edulink imports.
+- **Questioned/absent:** picking a name no longer marks it questioned. Use **Questioned ✓** or **Absent** explicitly; reset the round for a new lesson. Optional exclusions prevent calling on absent pupils.
+- **Behaviour:** pupil-level incident totals by category, editable categories and existing dated records.
+- **Class overview:** attainment vs target, data quality, class demographics and homework/behaviour counts. Includes teacher-controlled local CSV export without OPP text or SEND/PP fields.
+- **Privacy:** hide confidential indicators on the live seating plan, use the name-only projector, or select the top-bar **Privacy lock** to conceal the workspace instantly.
+- **Pupil card labels:** show seat numbers and imported More Able / A-level Internal/External indicators when provided, without requiring photographs.
+- **Restore previous seating:** restore the last generated/cleared arrangement in a plan version, in addition to the existing Undo and saved versions.
+
+### Additional improvements
+- **Integrated Lesson mode:** one screen for seating, timer, random picker, questioned/absent status, missing homework and behaviour actions.
+- **Progress graph:** dated assessment results plotted per pupil, with targets shown only when their scale is comparable.
+- **Import quality:** source warnings for duplicate headings or missing target, SEND, PP and COTTA fields, plus missing pupil data in Class overview.
+- **Quick pupil actions:** tap a seat in Lesson mode, or right-click / long-press a seated pupil, to open profile, homework, behaviour, rule and seat-lock actions.
+- **Homework trends:** missing and resolved totals plus pupil counts over 7, 30, 90 days or all dates.
+- **Academic-year rollover:** creates a new class and fresh pupil identities while retaining the old class, versions, assessment history and records. Optionally archive the old class. Reimport a new Edulink list afterwards to update grades.
+- **Local-only controls:** no cloud services, tracking, localStorage or external dependencies. New fields are contained in explicit encrypted session backups and old schema-1 backups remain importable.
+
+### Regression tests
+Run `npm test` for the dependency-free synthetic logic and encryption tests. The browser test is `npm run test:browser` (requires an installed Playwright/Chromium environment). The privacy test uses the *real CSP*, tests a blocked attempted external POST and checks encrypted backup verification and restore. Do not commit real class data or workbook contents. A browser test is still required before production use on school-managed devices.
+
 ## Install on GitHub Pages
 
 1. Upload `index.html`, `styles.css` and the `js` folder to the `main` branch of `kingsnortongirls/seatingplans`.
