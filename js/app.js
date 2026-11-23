@@ -218,6 +218,16 @@ function records(){
 }
 function recordRows(rows,mini=false){return rows.length?`<div class="table-wrap"><table><thead><tr><th>Date</th><th>Pupil</th><th>Category</th><th>Status</th><th>Details</th>${mini?'':'<th></th>'}</tr></thead><tbody>${rows.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(r=>`<tr><td>${fmtDate(r.date)}</td><td>${esc(student(r.studentId)?.name||'Former pupil')}</td><td>${esc(r.category||r.type)}</td><td>${badge(r.status||'Recorded',r.status==='Resolved'?'green':'amber')}</td><td>${esc(short(r.notes||r.assignment||'',65))}</td>${mini?'':`<td>${button('Edit','edit-record','btn btn-small',`data-id="${esc(r.id)}"`)}</td>`}</tr>`).join('')}</tbody></table></div>`:empty('No records','Add a homework or behaviour entry to start a local record.');}
 
+function setPrivacyLock(locked){
+ privacyLocked=!!locked;
+ if(privacyLocked){
+  closeModal();$('#toastRoot').replaceChildren();
+  if(projectorWindow&&!projectorWindow.closed)projectorWindow.close();
+  projectorWindow=null;
+  selectedStudent='';selectedSeat='';
+ }
+ render();
+}
 function quickPupilMenu(id){
  const s=student(id),p=currentPlan();if(!s||!p||s.classId!==classId)return;
  selectedStudent=id;
@@ -301,9 +311,9 @@ function backup(){return heading('Backup & restore','Your data is held in tempor
 // Event delegation for ordinary controls. Data from files is escaped before being inserted into the page.
 $('#nav').addEventListener('click',e=>{const b=e.target.closest('[data-view]');if(b){goto(b.dataset.view);$('.sidebar').classList.remove('open');}});
 $('#menuToggle').addEventListener('click',()=>$('.sidebar').classList.toggle('open'));
-$('#privacyToggle').addEventListener('click',()=>{privacyLocked=!privacyLocked;if(privacyLocked&&projectorWindow&&!projectorWindow.closed){projectorWindow.close();projectorWindow=null;}render();});
+$('#privacyToggle').addEventListener('click',()=>setPrivacyLock(!privacyLocked));
 $('#undoButton').addEventListener('click',undo);$('#redoButton').addEventListener('click',redo);$('#quickBackup').addEventListener('click',()=>action('download-backup'));$('#clearSession').addEventListener('click',()=>action('clear-session'));
-document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)){if(e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();}if(e.key.toLowerCase()==='y'){e.preventDefault();redo();}}});
+document.addEventListener('keydown',e=>{if(e.altKey&&e.key.toLowerCase()==='l'){e.preventDefault();setPrivacyLock(!privacyLocked);return;}if((e.ctrlKey||e.metaKey)&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)){if(e.key.toLowerCase()==='z'){e.preventDefault();e.shiftKey?redo():undo();}if(e.key.toLowerCase()==='y'){e.preventDefault();redo();}}});
 window.addEventListener('beforeunload',e=>{if(dirty||homeworkSession){e.preventDefault();e.returnValue='';}});
 window.addEventListener('afterprint',()=>document.body.classList.remove('print-pupil','print-teacher','print-groups'));
 $('#app').addEventListener('click',e=>{if(suppressSeatClick){suppressSeatClick=false;return;}const trigger=e.target.closest('[data-action]');if(trigger){if(trigger.tagName!=='SELECT'){e.preventDefault();action(trigger.dataset.action,trigger.dataset);return;}}const seat=e.target.closest('[data-seat]');if(seat&&!dragState)seatClick(seat.dataset.seat);const person=e.target.closest('[data-student]');if(person&&!e.target.closest('button')){if(homeworkSession?.classId===classId)toggleHomework(person.dataset.student);else{selectedStudent=person.dataset.student;render();}}});
@@ -387,7 +397,7 @@ function action(id,attrs={}){try{switch(id){
  case 'go-seating':goto('seating');break;
  case 'go-records':goto('records');break;
  case 'go-overview':goto('overview');break;
- case 'privacy-lock':privacyLocked=true;if(projectorWindow&&!projectorWindow.closed){projectorWindow.close();projectorWindow=null;}render();break;
+ case 'privacy-lock':setPrivacyLock(true);break;
  case 'timer-preset':case 'timer-set':case 'timer-start':case 'timer-pause':case 'timer-reset':case 'timer-fullscreen':timerAction(id,attrs.value);break;
  case 'new-homework':recordModal('homework');break;case 'new-behaviour':recordModal('behaviour');break;
  case 'edit-categories':categoriesModal();break;
