@@ -275,13 +275,14 @@ function quickPupilMenu(id){
  const s=student(id),p=currentPlan();if(!s||!p||s.classId!==classId)return;
  selectedStudent=id;
  const seat=p.layout.seats.find(x=>p.assignments[x.id]===id);
- const actions=[['View profile','profile'],['Record homework','homework'],['Record behaviour','behaviour'],['Seating rules','rules'],['Lock / unlock seat','lock']];
+ const actions=[['View profile','profile'],['Record homework','homework'],['Record late arrival','late'],['Record behaviour','behaviour'],['Seating rules','rules'],['Lock / unlock seat','lock']];
  const content='<div class="notice"><strong>'+esc(s.name)+'</strong><p>'+esc(seat?'Seat '+seat.label:'Unseated')+'</p></div><div class="quick-actions">'+actions.map(a=>'<button type="button" class="btn" data-quick-action="'+a[1]+'">'+esc(a[0])+'</button>').join('')+'</div>';
  openModal('Quick pupil actions',content,()=>{},'Close');
  $('#modalRoot').querySelectorAll('[data-quick-action]').forEach(btn=>btn.addEventListener('click',()=>{
   const which=btn.dataset.quickAction;closeModal();
   if(which==='profile')showStudent(id);
   if(which==='homework')recordModal('homework');
+  if(which==='late')recordModal('late');
   if(which==='behaviour')recordModal('behaviour');
   if(which==='rules')rulesModal();
   if(which==='lock'&&seat){selectedSeat=seat.id;action('toggle-lock');}
@@ -397,7 +398,7 @@ function lesson(){
  '<div class="lesson-grid"><section class="card stage-card"><h2>Class seating · '+esc(p?.name||'No plan')+'</h2>'+
  (homeworkSession?.classId===classId?'<div class="notice"><strong>Marking missing homework: '+esc(homeworkSession.assignment)+'</strong> · '+homeworkSession.missing.length+' selected. '+button('Save','finish-homework','btn btn-small')+button('Cancel','cancel-homework','btn btn-small')+'</div>':'')+
  seat+'<p class="tiny muted no-print">Tap a pupil to open quick actions. Right-click or long-press also works.</p><div class="button-row no-print">'+
- button('Mark homework','start-homework','btn btn-primary')+button('Record behaviour','new-behaviour','btn')+
+ button('Mark homework','start-homework','btn btn-primary')+button('Late arrival','new-late','btn')+button('Record behaviour','new-behaviour','btn')+
  button('Generate seats','auto-seat','btn')+'</div></section>'+
  '<div class="lesson-side">'+timerMarkup()+
  card('<div class="picker-stage '+(pickerSpin?'is-spinning':'')+'"><strong data-picker-display aria-live="'+(pickerSpin?'off':'polite')+'">'+esc(pickerDisplayName())+'</strong></div>'+
@@ -500,7 +501,7 @@ function action(id,attrs={}){try{switch(id){
  case 'go-overview':goto('overview');break;
  case 'privacy-lock':setPrivacyLock(true);break;
  case 'timer-preset':case 'timer-set':case 'timer-start':case 'timer-pause':case 'timer-reset':case 'timer-fullscreen':timerAction(id,attrs.value);break;
- case 'new-homework':recordModal('homework');break;case 'new-behaviour':recordModal('behaviour');break;
+ case 'new-homework':recordModal('homework');break;case 'new-late':recordModal('late');break;case 'new-behaviour':recordModal('behaviour');break;
  case 'edit-categories':categoriesModal();break;
  case 'edit-record':recordModal('',attrs.id);break;
  case 'pick-student':spinPupilPicker();break;
@@ -669,7 +670,54 @@ function categoriesModal(){
   notice('Behaviour category list updated locally.','success');
  },'Save categories');
 }
-function recordModal(type='homework',editId=''){const old=data.records.find(x=>x.id===editId);if(old)type=old.type;if(!classId||!currentStudents().length){notice('Import a class first.','error');return;}const s=currentStudents().map(x=>({value:x.id,label:x.name}));openModal(old?'Edit teacher record':type==='homework'?'Add homework record':'Add behaviour record',`<div class="field-grid"><label>Pupil${choose('studentId',s,old?.studentId||selectedStudent)}</label>${field('date','Date',old?.date||isoDate(),'date')}</div><label>Category${choose('category',type==='homework'?[{value:'Homework not submitted',label:'Homework not submitted'},{value:'Homework late',label:'Homework late'},{value:'Homework incomplete',label:'Homework incomplete'},{value:'Other',label:'Other'}]:data.categories,old?.category||'')}</label>${type==='homework'?`<label>Homework task<input name="assignment" value="${esc(old?.assignment||'')}" maxlength="200" placeholder="e.g. Unit 2 revision"></label><label>Status${choose('status',['Missing','Late','Resolved'],old?.status||'Missing')}</label>`:''}<label>Notes<textarea name="notes" rows="3" maxlength="3000">${esc(old?.notes||'')}</textarea></label>${old?'<label class="check"><input type="checkbox" name="delete"> Delete this record</label>':''}`,fd=>{const pupil=fd.get('studentId');if(!currentStudents().some(s=>s.id===pupil))throw new Error('Pupil not in this class.');mutation(()=>{if(old&&fd.has('delete'))data.records=data.records.filter(r=>r.id!==old.id);else{const item=old||{id:uid(),classId,type};Object.assign(item,{studentId:pupil,date:fd.get('date'),category:fd.get('category'),status:type==='homework'?fd.get('status'):'Recorded',assignment:clean(fd.get('assignment')),notes:clean(fd.get('notes'))});if(!old)data.records.push(item);}});},old?'Save changes':'Add record');}
+function recordModal(type='homework',editId=''){
+ const old=data.records.find(x=>x.id===editId);if(old)type=old.type;
+ if(!classId||!currentStudents().length){notice('Import a class first.','error');return;}
+ const people=currentStudents().map(x=>({value:x.id,label:x.name}));
+ const isLate=type==='late',isHomework=type==='homework';
+ const title=old?'Edit teacher record':isLate?'Record late arrival':isHomework?'Add homework record':'Add behaviour record';
+ const categories=isHomework?[{value:'Homework not submitted',label:'Homework not submitted'},{value:'Homework late',label:'Homework late'},{value:'Homework incomplete',label:'Homework incomplete'},{value:'Other',label:'Other'}]:
+ [...new Set([...(data.categories||[]).filter(x=>!/^late to lesson$/i.test(x)),...(old?.category?[old.category]:[])])];
+ const category= isLate?'':('<label>Category'+choose('category',categories,old?.category||'')+'</label>');
+ const extra=isHomework?
+  '<label>Homework task<input name="assignment" value="'+esc(old?.assignment||'')+'" maxlength="200" placeholder="e.g. Unit 2 revision"></label><label>Status'+choose('status',['Missing','Late','Resolved'].map(x=>({value:x,label:x})),old?.status||'Missing')+'</label>':
+  isLate?
+  '<div class="field-grid"><label>Lesson / period (optional)<input name="lesson" maxlength="80" placeholder="e.g. Period 3" value="'+esc(old?.lesson||'')+'"></label>'+
+  '<label>Minutes late (optional)<input name="minutesLate" type="number" min="1" max="180" step="1" placeholder="e.g. 8" value="'+esc(old?.minutesLate??'')+'"></label></div>':
+  '';
+ openModal(title,'<div class="field-grid"><label>Pupil'+choose('studentId',people,old?.studentId||selectedStudent)+'</label>'+
+  field('date','Date',old?.date||isoDate(),'date')+'</div>'+category+extra+
+  '<label>Notes / reason<textarea name="notes" rows="3" maxlength="3000">'+esc(old?.notes||'')+'</textarea></label>'+
+  (old?'<label class="check"><input type="checkbox" name="delete"> Delete this record</label>':'')+
+  (isLate?'<p class="muted tiny">Each late-to-lesson entry counts once. Adding a lesson / period allows more than one arrival to be recorded on the same date.</p>':''),
+ fd=>{
+  const pupil=String(fd.get('studentId')||''),date=String(fd.get('date')||'');
+  if(!currentStudents().some(s=>s.id===pupil))throw new Error('Pupil not in this class.');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(date))throw new Error('Select a valid lesson date.');
+  const lesson=isLate?clean(fd.get('lesson')):'',rawMinutes=isLate?clean(fd.get('minutesLate')):'';
+  if(isLate&&rawMinutes&&(!/^\d+$/.test(rawMinutes)||Number(rawMinutes)<1||Number(rawMinutes)>180))
+   throw new Error('Minutes late must be a whole number between 1 and 180.');
+  if(isLate&&!fd.has('delete')&&data.records.some(r=>r.id!==old?.id&&r.classId===classId&&r.studentId===pupil&&isLateRecord(r)&&r.date===date&&clean(r.lesson||'').toLowerCase()===lesson.toLowerCase()))
+   throw new Error('A late arrival for this pupil, date and lesson already exists. Edit that record, or specify the correct lesson / period.');
+  mutation(()=>{
+   if(old&&fd.has('delete'))data.records=data.records.filter(r=>r.id!==old.id);
+   else{
+    const item=old||{id:uid(),classId,type};
+    Object.assign(item,{
+     studentId:pupil,date,
+     category:isLate?'Late to lesson':String(fd.get('category')||'Other'),
+     status:isHomework?String(fd.get('status')||'Missing'):'Recorded',
+     assignment:isHomework?clean(fd.get('assignment')):'',
+     lesson:isLate?lesson:'',
+     minutesLate:isLate&&rawMinutes?Number(rawMinutes):null,
+     notes:clean(fd.get('notes'))
+    });
+    if(!old)data.records.push(item);
+   }
+  });
+ },old?'Save changes':'Add record');
+}
+
 function download(content,name,mime){const blob=new Blob([content],{type:mime});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),15000);}
 function backupModal(){if(!crypto.subtle){notice('Encrypted backups require a secure (HTTPS) browser context.','error');return;}openModal('Create encrypted backup',`<div class="callout privacy">Creates one encrypted file containing all your session data, including private OPP details. Choose a strong, unique password.</div>${field('password','Backup password (12+ characters)','','password')}${field('confirm','Repeat password','','password')}`,async fd=>{const pass=String(fd.get('password'));if(pass.length<12||pass!==fd.get('confirm'))throw new Error('Passwords must match and be at least 12 characters.');const encrypted=await encryptBackup(data,pass);download(encrypted,`seating-plans-${isoDate()}.seatingplan`,'application/octet-stream');render();notice('Encrypted download requested. Verify the saved file before closing this session.','success');});}
 async function importCSV(files){
