@@ -344,3 +344,90 @@
  .onboarding-opp-actions .btn{width:100%}
 }
 @media print{.onboarding-opp-step{display:none!important}}
+
+/* November usability redesign: consistent iconography and clear navigation */
+.icon-defs{position:absolute;width:0;height:0;overflow:hidden;pointer-events:none}
+.ui-icon{display:inline-block;vertical-align:middle;width:19px;height:19px;flex:none;fill:none;stroke:currentColor;stroke-width:1.85;stroke-linecap:round;stroke-linejoin:round}
+.ui-icon circle{fill:none}
+.brand-mark .ui-icon{width:23px;height:23px}
+.nav-heading{padding:17px 13px 6px;color:#8eafc4;font-size:10px;font-weight:850;letter-spacing:1.15px}
+#nav{gap:3px}
+.sidebar{overflow-y:auto;overscroll-behavior:contain}
+.nav-item{min-height:43px;padding:10px 12px;font-size:13px;gap:12px;transition:background .17s,color .17s,transform .17s}
+.nav-item span{font-size:13px;width:auto;text-align:left}
+.nav-item .ui-icon{width:19px;height:19px;opacity:.84}
+.nav-item:hover{background:#244b66;transform:translateX(2px)}
+.nav-item.active{background:#3277a4;color:#fff;box-shadow:inset 3px 0 0 #94d7ff}
+.nav-item:focus-visible{outline:2px solid #9dd3ff;outline-offset:2px}
+.nav-backdrop{display:none;background:rgba(8,25,39,.62);position:fixed;inset:0;z-index:25;border:0;width:100%;height:100%;cursor:default}
+.sidebar-bottom{padding-top:16px;border-top:1px solid #2d526b}
+.topbar{box-shadow:0 1px 0 rgba(15,46,75,.025)}
+.btn{transition:background .15s,border-color .15s,box-shadow .15s,transform .15s}
+.btn .ui-icon{width:16px;height:16px}
+.btn:focus-visible,.seat:focus-visible,.summary-close:focus-visible,.mobile-menu:focus-visible{outline:3px solid #7bb6ed;outline-offset:2px}
+.btn-primary{box-shadow:0 2px 8px rgba(24,92,163,.13)}
+.btn-primary:hover{box-shadow:0 4px 13px rgba(24,92,163,.2)}
+.card{box-shadow:0 3px 16px rgba(20,52,77,.045);border-color:#d9e4ed}
+.page-heading{padding-bottom:6px}
+.page-heading .button-row{row-gap:8px}
+.page-heading .subtitle,.page-heading p{line-height:1.5}
+.seat{transition:border-color .12s,background .12s,box-shadow .12s}
+.canvas .seat:not(.unassigned){cursor:pointer}
+.canvas .seat:not(.unassigned):hover{z-index:6;border-color:#478ec6;box-shadow:0 0 0 2px rgba(38,106,192,.2),0 5px 14px #315b7633}
+.canvas .seat.move-source{border-color:#136dc4!important;box-shadow:0 0 0 3px #4c9fe8!important;z-index:5}
+.seat-move-notice{display:flex;align-items:center;flex-wrap:wrap;gap:10px;color:#18518a;background:#eaf4ff;border-color:#afcee9;margin-bottom:14px}
+.seat-move-notice .btn{margin-left:auto}
+/* Teacher-only OPP summary: short, readable and easy to dismiss. */
+.pupil-summary-modal{display:flex;flex-direction:column;padding:0;width:min(650px,100%);max-height:min(88dvh,820px);overflow:hidden}
+.pupil-summary-modal .summary-header{padding:23px 26px 17px;background:#f3f8fd;border-bottom:1px solid #dae6f0;display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex:none}
+.pupil-summary-modal .summary-header h2{font-size:25px;line-height:1.22;letter-spacing:-.45px;color:#193a56;margin:5px 0 3px}
+.pupil-summary-modal .summary-header p{margin:0;font-size:13px}
+.pupil-summary-modal .summary-close{display:grid;place-items:center;flex:none;width:42px;height:42px;border:1px solid #cfdfeb;border-radius:12px;background:#fff;font-size:26px;font-weight:400;line-height:1;color:#49687f}
+.pupil-summary-modal .summary-close:hover{background:#e6f2fc}
+.pupil-summary-modal .summary-body{overflow-y:auto;padding:21px 26px;overscroll-behavior:contain;line-height:1.5;flex:1;min-height:0}
+.pupil-summary-modal .summary-overview{padding:0 0 13px;margin:0 0 12px;border-bottom:1px solid #e3ebf3}
+.pupil-summary-modal .summary-overview p{font-size:13px;margin:8px 0;line-height:1.55}
+.pupil-summary-modal .summary-labels{display:flex;flex-wrap:wrap;margin-bottom:10px;gap:5px}
+.pupil-summary-modal .seat-tags{display:flex;flex-wrap:wrap;gap:6px}
+.pupil-summary-modal .seat-tag{display:inline-flex;padding:5px 9px;border-radius:7px;font-size:11px;line-height:1.2;font-weight:800;border:1px solid transparent}
+.pupil-summary-modal .tag-send{background:#eee7fb;color:#532d81;border-color:#d6c4ee}
+.pupil-summary-modal .tag-pp{background:#fbebc9;color:#774e16;border-color:#f0d8a4}
+.pupil-summary-modal .tag-more{background:#e6f2ff;color:#23548a;border-color:#bed7f1}
+.pupil-summary-modal .tag-eal{background:#e2f4ef;color:#216859;border-color:#b4ded2}
+.pupil-summary-modal .summary-section{padding:10px 0;border-bottom:1px solid #e7eef5}
+.pupil-summary-modal .summary-section h3{color:#255878;font-size:14px;margin:0 0 9px}
+.pupil-summary-modal .summary-section ul,.pupil-summary-modal .summary-more ul{padding-left:19px;margin:0 0 7px}
+.pupil-summary-modal .summary-section li,.pupil-summary-modal .summary-more li{margin:6px 0;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.pupil-summary-modal .summary-more{margin:12px 0;padding:11px 13px;border-radius:9px;background:#f3f8fc;border:1px solid #dce9f4}
+.pupil-summary-modal .summary-more summary{color:#2566a3;font-weight:750;cursor:pointer}
+.pupil-summary-modal .summary-footer{display:flex;gap:9px;align-items:center;flex-wrap:wrap;background:#fff;border-top:1px solid #e1eaf2;padding:15px 26px;flex:none}
+.pupil-summary-modal .summary-footer>.btn{min-height:43px}
+.pupil-summary-modal .summary-quick{flex-basis:100%;margin-top:2px;font-size:12px;color:#456177}
+.pupil-summary-modal .summary-quick summary{cursor:pointer;font-weight:700;padding:7px 0;list-style-position:inside}
+.pupil-summary-modal .summary-quick .quick-actions{display:flex;flex-wrap:wrap;margin-top:8px}
+.pupil-summary-modal .summary-quick .btn{min-height:37px}
+@media(max-width:740px){
+ .nav-backdrop.visible{display:block}
+ .sidebar{box-shadow:10px 0 36px rgba(12,37,56,.18)}
+ .mobile-menu{align-items:center;justify-content:center;width:39px;height:39px;border-radius:11px;background:#f0f6fb;border:1px solid #d8e4ee;flex:none}
+ .page-heading .button-row{width:100%}
+ .page-heading .button-row .btn{flex:0 1 auto}
+}
+@media(max-width:560px){
+ #privacyToggle::before,#undoButton::before,#redoButton::before{content:none!important}
+ #privacyToggle,#undoButton,#redoButton{font-size:16px!important;padding:7px!important;min-width:36px}
+ #privacyToggle span,#undoButton span,#redoButton span{display:none}
+ #quickBackup{font-size:0!important;min-width:37px;min-height:37px}
+ #quickBackup span{display:none}
+ #quickBackup .ui-icon{width:18px;height:18px}
+ #breadcrumbs{max-width:125px;font-size:12px}
+ .pupil-summary-modal{max-height:calc(100dvh - 36px);border-radius:16px}
+ .pupil-summary-modal .summary-header{padding:18px 17px 13px}
+ .pupil-summary-modal .summary-header h2{font-size:21px}
+ .pupil-summary-modal .summary-body{padding:15px 17px}
+ .pupil-summary-modal .summary-footer{padding:12px 17px;gap:7px}
+ .pupil-summary-modal .summary-footer>.btn{flex:1;white-space:normal;font-size:11px;min-height:44px}
+ .pupil-summary-modal .summary-footer .ui-icon{width:15px;height:15px}
+ .seat-move-notice{font-size:12px}
+}
+@media print{.nav-backdrop,.pupil-summary-modal{display:none!important}}
