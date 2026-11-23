@@ -472,3 +472,10 @@
  .workflow-strip-title small{font-size:10px}
 }
 @media print{.workflow-strip,.action-more,.advanced-plan-tools{display:none!important}}
+
+/* Scrolling a normal teacher seating plan on a phone must remain possible.
+   Only the room designer needs unrestricted desk-position dragging. */
+@media(max-width:740px){
+ .canvas[data-mode="seating"]{touch-action:pan-y}
+ .canvas[data-mode="seating"] .seat{touch-action:manipulation}
+}
