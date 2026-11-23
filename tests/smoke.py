@@ -35,6 +35,8 @@ async def main():
   print('room seats',await page.locator('.seat').count())
   assert await page.locator('.seat').count()==32
   await page.get_by_role('button',name='⚄ Generate seats').click()
+  await page.get_by_role('button',name='Preview seating plan').click()
+  await page.get_by_role('button',name='Apply seating plan').click()
   print('seated',await page.locator('.seat:not(.unassigned)').count())
   assert await page.locator('.seat:not(.unassigned)').count()==16
   # Moving a seated pupil onto another occupied seat must swap, not unseat.
