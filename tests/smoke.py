@@ -23,8 +23,10 @@ async def main():
   # Synthetic Edulink export
   path=ROOT/'tests'/'demo.csv'
   with path.open('w',newline='') as f:
-   w=csv.writer(f);w.writerow(['Learner','Class','Pupil Premium Indicator','SEN Status','Prior Attainment Group','Y7 Reading age','Y7 Cs AT (Y07 Year End)','Y7 Cs COTTA Dec (Y07 Dec)']);w.writerows([[f'Pupil {n}', '7X/CS', 'No', 'N', 'Middle', '10:4', '7','6'] for n in range(1,17)])
-  await page.locator('#csvFile').set_input_files(str(path));await page.wait_for_timeout(500)
+   w=csv.writer(f);w.writerow(['Learner','Class','Pupil Premium Indicator','SEN Status','Prior Attainment Group','Y7 Reading age','Y7 Cs AT (Y07 Year End)','Y7 Cs COTTA Dec (Y07 Dec)','Student ID']);w.writerows([[f'Pupil {n}', '7X/CS', 'No', 'N', 'Middle', '10:4', '7','6',f'ID-{n}'] for n in range(1,17)])
+  await page.locator('#csvFile').set_input_files(str(path));await page.wait_for_timeout(200)
+  assert await page.get_by_text('Review Edulink marksheet changes').count()>=1
+  await page.locator('#modalForm button[type=submit]').click()
   print('after import title',(await page.locator('main').inner_text())[:340]);print('pageerror',errs)
   await page.get_by_role('button',name='Open',exact=True).first.click()
   await page.get_by_role('button',name='+ New version').click()
@@ -35,6 +37,23 @@ async def main():
   await page.get_by_role('button',name='⚄ Generate seats').click()
   print('seated',await page.locator('.seat:not(.unassigned)').count())
   assert await page.locator('.seat:not(.unassigned)').count()==16
+  # Moving a seated pupil onto another occupied seat must swap, not unseat.
+  before=await page.locator('.seat:not(.unassigned) strong').all_inner_texts()
+  first=before[0];second=next(x for x in before if x!=first)
+  await page.locator('.pupil-chip',has=page.locator('strong',has_text=first)).first.click()
+  await page.locator('.seat:not(.unassigned)',has=page.locator('strong',has_text=second)).first.click()
+  assert await page.locator('.seat:not(.unassigned)').count()==16
+  # Batch marking: tap a seat, then confirm to create one local record.
+  await page.get_by_role('button',name='Mark homework').click()
+  await page.locator('#modalForm input[name=assignment]').fill('Synthetic homework task')
+  await page.locator('#modalForm button[type=submit]').click()
+  await page.locator('.seat:not(.unassigned)').first.click()
+  assert await page.locator('.seat.homework-missing').count()==1
+  await page.get_by_role('button',name='Save missing records').click()
+  await page.locator('#modalForm button[type=submit]').click()
+  await page.locator('#nav [data-view=records]').click()
+  assert await page.get_by_text('Synthetic homework task').count()>=1
+  await page.locator('#nav [data-view=seating]').click()
   await page.get_by_role('button',name='Seating rules').click()
   await page.locator('#modalForm [name=type]').select_option('apart')
   await page.locator('#modalForm [name=b]').select_option(index=2)
@@ -76,6 +95,14 @@ async def main():
   print('opp message',await page.locator('#toastRoot').inner_text())
   assert 'Matched 1 OPP(s)' in await page.locator('#toastRoot').inner_text()
   doc.unlink(missing_ok=True)
+  # Refresh retains existing pupil identity when the name changes, using Student ID.
+  path.write_text(path.read_text().replace('Pupil 1,','Pupil One Renamed,'),encoding='utf-8')
+  await page.locator('#csvFile').set_input_files(str(path))
+  assert await page.get_by_text('Review Edulink marksheet changes').count()>=1
+  await page.locator('#modalForm button[type=submit]').click()
+  await page.locator('#nav [data-view=profiles]').click()
+  assert await page.get_by_text('Pupil One Renamed').count()>=1
+  path.unlink(missing_ok=True)
   print('pageerrors',errs)
   assert not errs,errs
   await browser.close()
