@@ -43,6 +43,10 @@ async def main():
   await page.locator('#modalForm button[type=submit]').click()
   print('version selector', await page.locator('select[name=planId] option').count())
   assert await page.locator('select[name=planId] option').count()==2
+  await page.get_by_role('button',name='Compare',exact=True).click()
+  await page.locator('#modalForm button[type=submit]').click()
+  assert await page.get_by_text('Version comparison').count()>=1
+  await page.locator('#modalRoot [data-action=close-modal]').click()
   await page.locator('#nav [data-view=rooms]').click()
   await page.get_by_role('button',name='+ Add desk').click()
   print('room seats after add',await page.locator('.seat').count())
