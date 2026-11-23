@@ -178,7 +178,7 @@ export function buildPreset(kind,name) {
   [30,40,50,60,70,80,90].forEach(y=>add(92,y,'IT3-Right'));
   [26,36,46,56,66,76].forEach(x=>add(x,40,'IT3-Island-North'));
   [26,36,46,56,66,76].forEach(x=>add(x,65,'IT3-Island-South'));
-  return {id:uid(),name:name||'IT3',kind:'it3',seats,teacher:{x:89,y:8},board:'front'};
+  return {id:uid(),name:name||'IT3',kind:'it3',seats,teacher:{x:76,y:90},board:'back'};
  }
  if(kind==='it2'){
   // IT2: 33 usable positions from the classroom photograph. Empty chairs
@@ -217,24 +217,24 @@ export function issuesFor(plan,assignments=plan.assignments) {
  for(const r of plan.rules||[]){const a=byStudent[r.a],b=byStudent[r.b];if(!a)continue;
   if(r.type==='apart'&&b){const bad=r.mode==='group'?a.group===b.group:distance(a,b)<(Number(r.distance)||15);if(bad)issues.push('Separation rule not met');}
   if(r.type==='together'&&b&&distance(a,b)>19)issues.push('Preferred pairing not met');
-  if(r.type==='priority'&&r.strict&&!preferred(a,r.mode))issues.push('Required seat priority not met');
+  if(r.type==='priority'&&r.strict&&!preferred(a,r.mode,plan.layout.board))issues.push('Required seat priority not met');
  }
  return issues;
 }
-export function preferred(seat,mode){return mode==='front'?seat.y<=43:mode==='access'?seat.priority==='access':mode==='preferred'?['access','preferred'].includes(seat.priority):true;}
+export function preferred(seat,mode,board='front'){return mode==='front'?(board==='back'?seat.y>=57:seat.y<=43):mode==='access'?seat.priority==='access':mode==='preferred'?['access','preferred'].includes(seat.priority):true;}
 function score(plan,assigned,studentsById) {
  const seated=Object.fromEntries(Object.entries(assigned).map(([seat,id])=>[id,plan.layout.seats.find(s=>s.id===seat)]));
  let cost=0,hard=0;
  for(const r of plan.rules||[]){const a=seated[r.a],b=seated[r.b];if(!a)continue;
   if(r.type==='apart'&&b){const violated=r.mode==='group'?a.group===b.group:distance(a,b)<(Number(r.distance)||15);if(violated){cost+=30000;hard++;}}
   if(r.type==='together'&&b){cost+=Math.max(0,distance(a,b)-16)*25;}
-  if(r.type==='priority'&&!preferred(a,r.mode)){cost+=r.strict?30000:350;if(r.strict)hard++;}
+  if(r.type==='priority'&&!preferred(a,r.mode,plan.layout.board)){cost+=r.strict?30000:350;if(r.strict)hard++;}
  }
  for(const [seat,id] of Object.entries(assigned)){
   const s=plan.layout.seats.find(x=>x.id===seat),p=studentsById[id];if(!s||!p)continue;
   if(s.priority==='avoid')cost+=120;
   // A small optional spread bonus; protected characteristics never enter the algorithm.
-  if(p.prior&&/high/i.test(p.prior))cost+=Math.max(0,28-s.y)*0.01;
+  if(p.prior&&/high/i.test(p.prior))cost+=Math.max(0,28-(plan.layout.board==='back'?100-s.y:s.y))*0.01;
  }
  return {cost,hard};
 }
