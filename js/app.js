@@ -95,7 +95,7 @@ function assessmentModal(id=''){
  (old?'<label class="check"><input type="checkbox" name="delete"> Delete this assessment</label>':'');
  openModal(old?'Edit saved assessment':'Save assessment',content,fd=>{
   const sid=String(fd.get('studentId')),name=clean(fd.get('name')),grade=clean(fd.get('grade')),date=String(fd.get('date'));
-  if(!list.some(s=>s.id===sid)||!name||!grade||!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))throw new Error('Complete a valid pupil, name, grade and date.');
+  if(!list.some(s=>s.id===sid)||!name||!grade||!/^\d{4}-\d{2}-\d{2}$/.test(date))throw new Error('Complete a valid pupil, name, grade and date.');
   mutation(()=>{
    if(old&&fd.has('delete'))data.assessments=data.assessments.filter(a=>a.id!==id);
    else{const entry=old||{id:uid()};Object.assign(entry,{studentId:sid,classId,date,name,grade,target:clean(fd.get('target')),notes:clean(fd.get('notes'))});if(!old)data.assessments.push(entry);}
