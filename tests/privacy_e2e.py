@@ -94,6 +94,21 @@ async def main():
             assert await page.locator('.seat .seat-tag.tag-send').count()>=1
             assert await page.locator('.seat .seat-tag.tag-pp').count()>=1
             assert await page.locator('.seat-number').count()==0
+            # A normal tap opens private pupil support, not placement or a swap.
+            occupied=page.locator('.seat:not(.unassigned)').first
+            pupil_name=await occupied.locator('strong').inner_text()
+            await occupied.click()
+            summary=page.locator('.pupil-summary-modal')
+            assert await summary.count()==1
+            assert pupil_name in await summary.inner_text()
+            assert await summary.get_by_role('button',name='Full OPP / profile').count()==1
+            assert await summary.get_by_role('button',name='Move / swap').count()==1
+            assert await page.locator('.seat:not(.unassigned)').count()==3
+            # Moving requires a second deliberate seat selection.
+            await summary.get_by_role('button',name='Move / swap').click()
+            assert await page.get_by_text('Tap a destination seat',exact=False).count()>=1
+            await page.locator('[data-action=cancel-seat-move]').click()
+            assert await page.locator('.seat:not(.unassigned)').count()==3
             # Record a late arrival and verify that class/teacher reports separate
             # lateness from behaviour without treating blank SEND/PP as an error.
             await page.locator('#nav [data-view=records]').click()
@@ -133,6 +148,7 @@ async def main():
             # Projector receives names and positions only. It must not contain notes,
             # SEND/PP headings, source data or grades from the Edulink file.
             async with page.expect_popup() as open_info:
+                await page.locator('.action-more summary').click()
                 await page.get_by_role('button',name='Projector view').click()
             projector=await open_info.value
             await projector.wait_for_load_state('domcontentloaded')
