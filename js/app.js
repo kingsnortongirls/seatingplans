@@ -62,7 +62,7 @@ function welcome(){
 function setup(){
  const count=data.classes.length;
  const names=data.classes.slice().sort((a,b)=>a.name.localeCompare(b.name,'en-GB'));
- const added=setupPhase==='next';
+ const added=setupPhase==='next'&&!!setupLastImport;
  return heading(added?'Class import complete':'Set up your teaching groups',
   added?'Ready to import another class, or finish and create an encrypted backup.':'Import the first class using your Edulink marksheet. You can review all pupil matches before saving.')+
  `<div class="onboarding-step"><span class="onboarding-step-label">GUIDED SETUP</span><strong>${count} teaching group${count===1?'':'s'} in this session</strong></div>
