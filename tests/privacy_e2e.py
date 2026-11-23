@@ -62,6 +62,10 @@ async def main():
             await page.get_by_role('button',name='Preview seating plan').click()
             await page.get_by_role('button',name='Apply seating plan').click()
             assert await page.locator('.seat:not(.unassigned)').count()==3
+            # Teacher seating has individually legible SEND/PP labels and no printed seat numbers.
+            assert await page.locator('.seat .seat-tag.tag-send').count()>=1
+            assert await page.locator('.seat .seat-tag.tag-pp').count()>=1
+            assert await page.locator('.seat-number').count()==0
             # Original-workbook parity: manual assessment history and teacher progress.
             await page.locator('#nav [data-view=assessments]').click()
             await page.get_by_role('button',name='+ Save assessment').click()
@@ -75,6 +79,8 @@ async def main():
             await page.get_by_role('button',name='2 min').click()
             assert await page.locator('#lessonTimerLabel').inner_text()=='02:00'
             await page.get_by_role('button',name='Pick pupil').click()
+            # Names spin visibly and the selected pupil is revealed after the roll.
+            await page.locator('.picker-stage:not(.is-spinning) [data-picker-display]').wait_for(timeout=10000)
             await page.get_by_role('button',name='Questioned ✓').click()
             assert '1 pupil(s) questioned' in await page.locator('main').inner_text()
             await page.locator('#privacyToggle').click()
