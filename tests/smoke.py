@@ -30,7 +30,7 @@ async def main():
   assert await page.get_by_text('Review Edulink marksheet changes').count()>=1
   await page.locator('#modalForm button[type=submit]').click()
   print('after import title',(await page.locator('main').inner_text())[:340]);print('pageerror',errs)
-  assert await page.get_by_role('button',name='Choose ZIP or Word OPP files').count()==1
+  assert await page.get_by_role('button',name='Choose PDF, Word or ZIP OPP files').count()==1
   assert await page.get_by_text('Year 7',exact=False).count()>=1
   assert await page.get_by_text('Inclusion Matters',exact=True).count()>=1
   # Synthetic year-group ZIP containing a DOCX OPP, with no actual school data.
