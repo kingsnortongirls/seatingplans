@@ -520,8 +520,27 @@ $('#app').addEventListener('change',e=>{const t=e.target;if(t.dataset.action==='
 $('#app').addEventListener('input',e=>{if(e.target.id==='pupilSearch'){searchTerm=e.target.value;const pos=e.target.selectionStart;render();const el=$('#pupilSearch');if(el){el.focus();el.setSelectionRange(pos,pos);}}});
 $('#app').addEventListener('submit',e=>{e.preventDefault();const fd=new FormData(e.target);if(e.target.id==='roomSeatForm'){const r=currentRoom(),id=selectedSeat;mutation(()=>{const s=r.seats.find(x=>x.id===id);if(!s)return;s.label=clean(fd.get('label'))||s.label;s.priority=fd.get('priority');s.group=clean(fd.get('group'));s.x=Math.min(95,Math.max(5,Number(fd.get('x'))));s.y=Math.min(93,Math.max(15,Number(fd.get('y'))));s.rotation=Number(fd.get('rotation'));});}else if(e.target.id==='groupForm'){const selected=currentStudents().filter(s=>!fd.get('excludeAbsent')||!absent.has(s.id));groupResult=makeGroups(selected,currentPlan()||{assignments:{},layout:{seats:[]},rules:[]},{size:Number(fd.get('size'))||4,mode:fd.get('mode')});render();}});
 $('#app').addEventListener('dragstart',e=>{if(homeworkSession)return;const p=e.target.closest('[data-student]');if(p){e.dataTransfer.setData('text/plain',p.dataset.student);e.dataTransfer.effectAllowed='move';}});
-$('#app').addEventListener('dragover',e=>{if(e.target.closest('.seat')&&view==='seating')e.preventDefault();});
-$('#app').addEventListener('drop',e=>{const b=e.target.closest('.seat');if(b&&view==='seating'&&!homeworkSession){e.preventDefault();const sid=e.dataTransfer.getData('text/plain');if(student(sid))assignSeat(b.dataset.seat,sid);}});
+$('#app').addEventListener('dragover',e=>{
+ if(e.target.closest('[data-opp-drop]')&&view==='setup'&&setupActive&&setupPhase==='opp'){
+  e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='copy';return;
+ }
+ if(e.target.closest('.seat')&&view==='seating')e.preventDefault();
+});
+$('#app').addEventListener('drop',e=>{
+ const drop=e.target.closest('[data-opp-drop]');
+ if(drop&&view==='setup'&&setupActive&&setupPhase==='opp'){
+  e.preventDefault();
+  const files=[...(e.dataTransfer?.files||[])];
+  if(!files.length){notice('Drop a ZIP or Word file, or use Choose ZIP or Word OPP files.');return;}
+  importOPPs(files).catch(err=>notice(err.message,'error'));
+  return;
+ }
+ const b=e.target.closest('.seat');
+ if(b&&view==='seating'&&!homeworkSession){
+  e.preventDefault();const sid=e.dataTransfer.getData('text/plain');
+  if(student(sid))assignSeat(b.dataset.seat,sid);
+ }
+});
 // Smooth pointer dragging of physical desks, with a single undo step per drag.
 $('#app').addEventListener('pointerdown',e=>{if(view!=='rooms'||e.button!==0)return;const part=e.target.closest('[data-seat],[data-desk]');if(!part)return;const canvas=$('#roomCanvas');const rect=canvas.getBoundingClientRect();const r=currentRoom();const s=part.dataset.seat?r.seats.find(s=>s.id===part.dataset.seat):r.teacher;if(!s)return;dragState={id:part.dataset.seat||'teacher',from:{x:s.x,y:s.y},rect,part,moved:false,prior:clone(data)};try{part.setPointerCapture(e.pointerId)}catch{};});
 $('#app').addEventListener('pointermove',e=>{if(!dragState||view!=='rooms')return;const d=dragState,r=currentRoom(),s=d.id==='teacher'?r.teacher:r.seats.find(x=>x.id===d.id);if(!s)return;const x=Math.max(5,Math.min(95,(e.clientX-d.rect.left)/d.rect.width*100)),y=Math.max(d.id==='teacher'?5:16,Math.min(95,(e.clientY-d.rect.top)/d.rect.height*100));if(Math.hypot(x-d.from.x,y-d.from.y)>1)d.moved=true;s.x=Math.round(x);s.y=Math.round(y);d.part.style.left=s.x+'%';d.part.style.top=s.y+'%';});
@@ -542,10 +561,10 @@ const field=(name,title,value='',type='text')=>`<label>${esc(title)}<input type=
 function showStudent(id){selectedStudent=id;profileTab='support';goto('profiles');}
 function action(id,attrs={}){try{switch(id){
  case 'wizard-start':setupActive=true;setupPhase=data.classes.length?'next':'import';setupLastImport='';setupLastOppImport='';setupYearGroups=[];goto('setup');break;
- case 'wizard-import-next':if(setupActive){setupPhase='import';setupLastOppImport='';setupLastImport='';render();}$('#csvFile').click();break;
+ case 'wizard-import-next':$('#csvFile').click();break;
  case 'wizard-import-opp':$('#oppFiles').click();break;
  case 'wizard-more-opp':setupPhase='opp';setupLastOppImport='';render();queueMicrotask(()=>wizardScrollToStep('setup-opp-step'));break;
- case 'wizard-skip-opp':setupPhase='next';setupLastOppImport='OPP import skipped. You can add profiles later.';render();break;
+ case 'wizard-skip-opp':setupPhase='next';setupLastOppImport='OPP import skipped. You can add profiles later.';render();queueMicrotask(()=>wizardScrollToStep('setup-next-step'));break;
  case 'wizard-skip':case 'wizard-exit':setupActive=false;setupPhase='import';setupLastOppImport='';setupYearGroups=[];goto('dashboard');break;
  case 'wizard-finish':setupActive=false;setupPhase='import';setupLastOppImport='';setupYearGroups=[];goto('backup');queueMicrotask(()=>backupModal());break;
  case 'import-csv':$('#csvFile').click();break;
