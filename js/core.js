@@ -261,7 +261,7 @@ export function buildPreset(kind,name) {
 export function newPlan(classId,room,label) {
  return {id:uid(),classId,roomId:room.id,name:label||'Autumn 1',created:new Date().toISOString(),
   layout:clone({kind:room.kind||'',seats:room.seats,teacher:room.teacher,board:room.board}),assignments:{},locks:[],
-  rules:[],accessPreference:{send:false,pp:false},notes:''};
+  rules:[],accessPreference:{send:false,pp:false},generationOptions:{keepApart:true,keepLocked:true,mixed:false,front:true},notes:''};
 }
 // A teacher can explicitly opt into preferring accessible seating for SEND,
 // Pupil Premium or both. No characteristic is inferred as a requirement.
@@ -292,6 +292,20 @@ export function accessReport(plan,studentList,assignments=plan.assignments){
   capacity:accessible.length,eligible:eligible.length,possible,shortfall:Math.max(0,eligible.length-possible),
   assigned:eligible.length-unmet.length,unmet,lockedAccess:fixedAccess
  };
+}
+// Numeric GCSE grades only: non-numeric grades remain unclassified rather than guessed.
+export function gradeGap(student){
+ const current=clean(student?.current),target=clean(student?.target);
+ if(!/^[1-9]$/.test(current)||!/^[1-9]$/.test(target))return null;
+ const gap=Number(current)-Number(target);
+ return {gap,band:gap<=-2?'below-two':gap===-1?'below-one':gap===0?'on-target':gap===1?'above-one':'above-two',
+  label:gap===0?'On target':gap<0?Math.abs(gap)+' grade(s) below target':gap+' grade(s) above target'};
+}
+// Read only explicit OPP phrases. No text is transmitted or sent to AI.
+export function oppSeatingHints(opp){
+ const sections=['adaptations','adjustments','about'];
+ const lines=sections.flatMap(section=>(Array.isArray(opp?.[section])?opp[section]:[]).map(value=>({section,text:clean(value)})));
+ return lines.filter(({text})=>text&&/(sit|seat|sitting|position|front|board|aisle|teacher|accessible)/i.test(text)&&/(seat|sit|front|near|next to|close to|board|aisle|accessible|position)/i.test(text)).slice(0,30);
 }
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 // Human-readable checks are separate from the optimiser: required vs advisory,
@@ -337,13 +351,13 @@ export function issuesFor(plan,assignments=plan.assignments) {
  return issues;
 }
 export function preferred(seat,mode,board='front'){return mode==='front'?(board==='back'?seat.y>=57:seat.y<=43):mode==='access'?seat.priority==='access':mode==='preferred'?['access','preferred'].includes(seat.priority):true;}
-function score(plan,assigned,studentsById,eligibleIds=new Set()) {
+function score(plan,assigned,studentsById,eligibleIds=new Set(),options={}) {
  const seated=Object.fromEntries(Object.entries(assigned).map(([seat,id])=>[id,plan.layout.seats.find(s=>s.id===seat)]));
  let cost=0,hard=0;
  for(const r of plan.rules||[]){const a=seated[r.a],b=seated[r.b];if(!a)continue;
-  if(r.type==='apart'&&b){const violated=r.mode==='group'?a.group===b.group:distance(a,b)<(Number(r.distance)||15);if(violated){cost+=30000;hard++;}}
+  if(r.type==='apart'&&b&&options.keepApart!==false){const violated=r.mode==='group'?a.group===b.group:distance(a,b)<(Number(r.distance)||15);if(violated){cost+=30000;hard++;}}
   if(r.type==='together'&&b){cost+=Math.max(0,distance(a,b)-16)*25;}
-  if(r.type==='priority'&&!preferred(a,r.mode,plan.layout.board)){cost+=r.strict?30000:350;if(r.strict)hard++;}
+  if(r.type==='priority'&&(r.mode!=='front'||options.front!==false)&&!preferred(a,r.mode,plan.layout.board)){cost+=r.strict?30000:350;if(r.strict)hard++;}
  }
  for(const [seat,id] of Object.entries(assigned)){
   const s=plan.layout.seats.find(x=>x.id===seat),p=studentsById[id];if(!s||!p)continue;
@@ -352,17 +366,41 @@ function score(plan,assigned,studentsById,eligibleIds=new Set()) {
   // A small optional spread bonus; protected characteristics never enter the algorithm.
   if(p.prior&&/high/i.test(p.prior))cost+=Math.max(0,28-(plan.layout.board==='back'?100-s.y:s.y))*0.01;
  }
+ if(options.mixed){
+  const groups=new Map(),global={high:0,low:0,total:0};
+  for(const [seatId,id] of Object.entries(assigned)){
+   const seat=plan.layout.seats.find(s=>s.id===seatId),p=studentsById[id];
+   if(!seat||!p)continue;
+   const rank=/high|^h$/i.test(clean(p.prior))?'high':/low|^l$/i.test(clean(p.prior))?'low':null;
+   if(!rank)continue;
+   const group=seat.group||'Seat-'+seat.id;
+   if(!groups.has(group))groups.set(group,{high:0,low:0,total:0});
+   groups.get(group)[rank]++;groups.get(group).total++;global[rank]++;global.total++;
+  }
+  if(global.total>0&&groups.size>1){
+   for(const x of groups.values())for(const level of ['high','low']){
+    const expected=global[level]/global.total;
+    cost+=350*Math.pow(x[level]-expected*x.total,2);
+   }
+  }
+ }
  return {cost,hard};
 }
-export function autoSeat(plan,studentList) {
+export function autoSeat(plan,studentList,options={}) {
  const seats=plan.layout.seats;
  if(studentList.length>seats.length)throw new Error('There are more pupils than seats. Add desks to the room first.');
+ const config={
+  send:!!plan.accessPreference?.send,pp:!!plan.accessPreference?.pp,
+  keepApart:true,keepLocked:true,mixed:false,front:true,
+  ...(plan.generationOptions||{}),...options
+ };
+ const effectivePlan={...plan,locks:config.keepLocked===false?[]:plan.locks,accessPreference:{send:!!config.send,pp:!!config.pp}};
  const ids=studentList.map(s=>s.id),studentsById=Object.fromEntries(studentList.map(s=>[s.id,s]));
- const fixed=Object.fromEntries(Object.entries(plan.assignments).filter(([seat,id])=>plan.locks.includes(seat)&&ids.includes(id)&&seats.some(s=>s.id===seat)));
+ const fixed=Object.fromEntries(Object.entries(plan.assignments).filter(([seat,id])=>effectivePlan.locks.includes(seat)&&ids.includes(id)&&seats.some(s=>s.id===seat)));
  const available=seats.filter(s=>!Object.hasOwn(fixed,s.id)).map(s=>s.id);
  const remaining=ids.filter(id=>!Object.values(fixed).includes(id));
  if(remaining.length>available.length)throw new Error('Not enough unlocked seats.');
- const eligibleIds=new Set(studentList.filter(s=>accessEligible(s,plan.accessPreference)).map(s=>s.id));
+ const eligibleIds=new Set(studentList.filter(s=>accessEligible(s,effectivePlan.accessPreference)).map(s=>s.id));
  const shuffle=items=>{const a=[...items];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
  let best=null;
  for(let run=0;run<16;run++){
@@ -374,20 +412,20 @@ export function autoSeat(plan,studentList) {
   let current={...fixed};
   for(const id of eligible)current[(accessOrder.shift()||otherOrder.shift())]=id;
   for(const id of others)current[(otherOrder.shift()||accessOrder.shift())]=id;
-  let rating=score(plan,current,studentsById,eligibleIds).cost;
+  let rating=score(plan,current,studentsById,eligibleIds,config).cost;
   for(let step=0;step<650;step++){
    const movable=Object.keys(current).filter(s=>!Object.hasOwn(fixed,s));
    if(!movable.length)break;
    const a=movable[Math.floor(Math.random()*movable.length)];
    const b=available[Math.floor(Math.random()*available.length)];
    const trial={...current};const temp=trial[a];if(trial[b]===undefined){delete trial[a];trial[b]=temp;}else{trial[a]=trial[b];trial[b]=temp;}
-   const next=score(plan,trial,studentsById,eligibleIds).cost;
+   const next=score(plan,trial,studentsById,eligibleIds,config).cost;
    if(next<rating||Math.random()<0.012*Math.exp((rating-next)/150)){current=trial;rating=next;}
   }
-  if(!best||rating<best.rating)best={assignments:current,rating,hard:score(plan,current,studentsById,eligibleIds).hard};
+  if(!best||rating<best.rating)best={assignments:current,rating,hard:score(plan,current,studentsById,eligibleIds,config).hard};
   if(best.hard===0&&best.rating<10)break;
  }
- return {...best,issues:issuesFor(plan,best.assignments),access:accessReport(plan,studentList,best.assignments)};
+ return {...best,issues:issuesFor(plan,best.assignments),access:accessReport(effectivePlan,studentList,best.assignments),options:config};
 }
 export function makeGroups(students,plan,{size=4,mode='random'}={}) {
  const n=Math.max(1,Math.ceil(students.length/size));
