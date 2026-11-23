@@ -143,3 +143,17 @@
 @media(max-width:860px){.lesson-grid{grid-template-columns:1fr}.lesson-side{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}}
 @media(max-width:480px){.quick-actions{grid-template-columns:1fr}.timer-digits{font-size:54px}.canvas .seat .seat-number{font-size:6px}}
 @media print{.lesson-clock,.lesson-side,.privacy-cover{display:none!important}.lesson-grid{display:block!important}.canvas .seat-number{font-size:7px!important}}
+
+/* Keep four top-bar actions usable on portrait phones. Text labels are
+   preserved in each accessible button name/title; only their visual glyphs
+   are compacted. */
+@media(max-width:560px){
+ .topbar{gap:5px}
+ #breadcrumbs{max-width:92px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px}
+ .top-actions{gap:3px}
+ #privacyToggle,#undoButton,#redoButton{font-size:0!important;min-width:33px;min-height:33px}
+ #privacyToggle::before{content:"◈";font-size:17px}
+ #undoButton::before{content:"↶";font-size:18px}
+ #redoButton::before{content:"↷";font-size:18px}
+ #quickBackup{font-size:10px!important;padding:6px!important}
+}
