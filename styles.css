@@ -118,3 +118,28 @@
  .print-pupil .canvas .seat[class*="grade-"]::before{display:none!important}
  .print-pupil .canvas .seat.picked-pupil{outline:0!important}
 }
+
+/* Integrated teacher lesson dashboard, local timer and pupil quick actions. */
+.lesson-grid{display:grid;grid-template-columns:minmax(0,1.9fr) minmax(275px,1fr);gap:18px;align-items:start}
+.lesson-side{display:flex;flex-direction:column;gap:16px;min-width:0}
+.lesson-clock{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+.lesson-clock h2{align-self:stretch;text-align:left}
+.timer-digits{font-variant-numeric:tabular-nums;font-size:clamp(48px,7vw,92px);font-weight:850;line-height:1.1;letter-spacing:-3px;color:#193e61}
+.timer-digits.timer-finished{color:#a32323}
+.timer-buttons{justify-content:center}
+.lesson-clock:fullscreen{display:flex;justify-content:center;align-items:center;background:#fafcff}
+.lesson-clock:fullscreen .timer-digits{font-size:min(30vw,260px)}
+.privacy-cover{min-height:65vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;border:2px solid #d1dbe8;border-radius:14px;background:#f1f5fa;text-align:center;padding:36px}
+.privacy-cover h1{font-size:clamp(28px,5vw,54px);color:#20344c}
+.privacy-cover p{font-size:17px;max-width:500px;color:#56677a}
+.quick-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+.quick-actions .btn{white-space:normal;text-align:left;min-height:45px}
+.mini-bar{display:grid;grid-template-columns:minmax(105px,1fr) minmax(90px,2fr) 32px;gap:9px;align-items:center;margin:9px 0;font-size:12px}
+.mini-bar>div{height:11px;background:#e6edf6;border-radius:12px;overflow:hidden}
+.mini-bar i{display:block;height:100%;background:#d27c33;border-radius:12px}
+.mini-bar strong{text-align:right;font-variant-numeric:tabular-nums}
+.progress-svg{max-width:100%;height:auto;min-height:160px;overflow:visible}
+.canvas .seat .seat-number{position:absolute;top:1px;left:2px;font-size:8px;font-weight:800;opacity:.67;background:#fff9;padding:1px 3px;border-radius:3px;pointer-events:none}
+@media(max-width:860px){.lesson-grid{grid-template-columns:1fr}.lesson-side{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))}}
+@media(max-width:480px){.quick-actions{grid-template-columns:1fr}.timer-digits{font-size:54px}.canvas .seat .seat-number{font-size:6px}}
+@media print{.lesson-clock,.lesson-side,.privacy-cover{display:none!important}.lesson-grid{display:block!important}.canvas .seat-number{font-size:7px!important}}
