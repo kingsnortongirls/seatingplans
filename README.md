@@ -2,13 +2,21 @@
 
 A fully client-side seating plan and teaching toolkit designed for static hosting on GitHub Pages. No pupil files or example personal data are included.
 
+## PDF One Page Profile import
+
+**Supported:** searchable, text-based `.pdf` files, Word `.docx` files, several of either format selected together, and `.zip` archives containing a mixture of PDFs and DOCX files. All extraction and pupil matching runs locally. No external PDF library, OCR service, file upload or network request is used.
+
+**Not supported:** scanned/image-only PDFs without a text layer, encrypted PDFs, and some unusual PDF encodings. The importer reports individual file errors and leaves the pupil's existing profile untouched. To use a scanned OPP, obtain the original Word file or create a searchable PDF using school-approved OCR software before importing. **Always check the pupil's imported support information and seating preferences**, since PDF layouts may place text in a different reading order from Word.
+
+The embedded browser extractor includes internal size/complexity limits and avoids inferring names or needs from unreadable image content.
+
 ## Start-up and class setup wizard
 
 Every **fresh page load** offers **Restore my backup** or **Set up my classes**. The site does not remember visits or automatically retain pupil records.
 
 1. **Restore my backup:** choose a downloaded encrypted `.seatingplan` file and enter its original password to continue. A successful restore bypasses new-class setup.
 2. **Import classes:** start the wizard, choose an Edulink CSV and confirm the pupil-matching review. Multiple teaching groups from one CSV are supported.
-3. **Import year-group OPPs:** immediately after confirmation, the wizard advances to a dedicated One Page Profile step and **automatically scrolls to it**. The on-screen path is **Staffshare → Inclusion → Inclusion Matters → One Page Profiles**. Select either a **year-group ZIP** of Word profiles or **multiple .docx documents**, or drag them onto the upload area. The imported file names and OPP contents are not transmitted or persisted by the website. The parser attempts exact pupil-name matches; ambiguous or unmatched profiles require manual confirmation.
+3. **Import year-group OPPs:** immediately after confirmation, the wizard advances to a dedicated One Page Profile step and **automatically scrolls to it**. The on-screen path is **Staffshare → Inclusion → Inclusion Matters → One Page Profiles**. Select a **year-group ZIP containing PDF and/or Word files**, or select **multiple .pdf and .docx documents** together, or drag them onto the upload area. The imported file names and OPP contents are not transmitted or persisted by the website. The parser attempts exact pupil-name matches; ambiguous or unmatched profiles require manual confirmation.
 4. **Next class or finish:** after the OPPs are processed, choose **Import next class**, **Import more OPPs** or **I'm finished · Create backup**. Repeat the process for each year group. You can **Skip OPP import for now** without losing the classes already imported. Profiles can be added later.
 5. **Back up:** when you finish, the app opens the encrypted backup password form immediately. After downloading, choose **Verify downloaded backup** to check the file can be decrypted and that it matches the current session. A download alone cannot guarantee a working backup.
 6. **Exit guided setup:** use the standard dashboard without following the wizard. The dashboard also allows the wizard to be reopened.
@@ -19,7 +27,7 @@ There is no persistent onboarding state, server account, login, browser storage 
 
 ## Data protection and deployment
 
-* Edulink CSVs, Word DOCX OPPs and ZIP bundles are parsed by JavaScript in the teacher's own browser. Files are not uploaded.
+* Edulink CSVs, Word DOCX OPPs, searchable text-based PDFs and ZIP bundles containing either or both formats are parsed by JavaScript in the teacher's own browser. Files are not uploaded.
 * There is no backend, API, analytics, external font, runtime CDN, login, cookies, localStorage, IndexedDB or service worker.
 * The Content Security Policy blocks network connections with `connect-src 'none'`, remote scripts, frames and object embeds.
 * Pupil and teacher record data is held in memory. Reloading or closing the page discards the session unless the teacher chooses to download a local **encrypted** backup.
@@ -32,7 +40,7 @@ There is no persistent onboarding state, server account, login, browser storage 
 ## Features
 
 - Import or refresh Edulink marksheets with pupil name, class, reg group, SEND, PP, EAL, prior attainment, reading/spelling ages, target and current grades.
-- Bulk OPP import from individual `.docx` or `.zip` files with Word text-box extraction, photo extraction and exact pupil-name matching; ambiguous matches are shown for review.
+- Bulk OPP import from `.docx`, searchable `.pdf` or `.zip` files, including mixed PDF/Word archives. Word text boxes and photographs are supported; searchable PDF text is extracted locally without accessing a service. Scanned/image-only PDFs, encrypted PDFs or unusual PDF encodings are reported as errors rather than silently attached to pupils. Ambiguous pupil matches require review.
 - Standard 2-4-2 room (four rows, 32 seats), **IT3 (34 seats: 8 top, 7 left, 7 right and 12 on the central island in two rows of 6)**, **IT2 (33 seats: 8 left, 7 right, 10 central, 4 upper and 4 lower)**, pairs, group tables and U-shape, plus custom drag-and-drop editing, teacher desk and per-seat accessibility priority.
 - Manual placement, swaps and locking; automatically suggested seating according to separation, preferred pairing and accessible seating rules. Optional **SEND and/or Pupil Premium accessible seat preference** is selected separately on each plan, with capacity and individual unaccommodated-pupil reporting. Conflicts are reported rather than silently ignored.
 - Named seating plan versions, duplication, comparison and undo/redo.
@@ -156,4 +164,4 @@ Run `npm test` for the dependency-free synthetic logic and encryption tests. The
 
 `tests/smoke.py` uses Playwright with synthetic pupils to exercise class import, plan creation, auto-seat, rules, versions, room editing, record entry, questioning and groups. It also tests synthetic Word text-box OPP parsing without any network request. See `tests/crypto.mjs` for a Node Web Crypto round-trip check.
 
-**Do not commit real Edulink CSVs, Word OPPs, ZIPs, backups, images or screenshots containing pupil data.**
+**Do not commit real Edulink CSVs, PDF or Word OPPs, ZIPs, backups, images or screenshots containing pupil data.**
