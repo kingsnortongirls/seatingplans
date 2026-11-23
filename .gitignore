@@ -1,0 +1,17 @@
+# Never commit real or synthetic pupil data, uploads or backups
+*.seatingplan
+*.csv
+*.docx
+*.doc
+*.xls
+*.xlsx
+*.xlsm
+*.zip
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.webp
+.env*
+.DS_Store
+__pycache__/
