@@ -40,23 +40,25 @@ export const CSV_FIELDS = {
  readingAge:[/readingage/], readingSS:[/readingss$/,/readingstandardisedscore/],
  spellingAge:[/spellingage/], spellingSS:[/spellingss$/,/spellingstandardisedscore/],
  ks2Reading:[/ks2readingscaledscore/], ks2Maths:[/ks2mathsscaledscore/],
- externalId:[/^learnerid$/,/^pupilid$/,/^studentid$/,/^admissionnumber$/,/^upn$/],
+ externalId:[/^learnerid$/,/^pupilid$/,/^studentid$/,/^admissionnumber$/,/^upn$/,/^examno$/],
+ internalExternal:[/^internalexternal$/,/^studenttype$/,/^candidateorigin$/],
  target:[/csat/,/generalat/,/targetgrade$/,/^target$/],
  current:[/cotta/,/currentgrade$/, /workingat$/]
 };
 export function readEdulink(text) {
  const {headers,records}=parseCSV(text);
+ const assessmentHeaders=headers.filter(h=>/cotta|currentgrade|workingat|assess(?:ment)?(?:result|grade)?/i.test(norm(h))&&!/target|predicted/i.test(norm(h))).slice(0,45);
  if(!headers.some(h=>CSV_FIELDS.name.some(r=>r.test(norm(h)))))throw new Error('Could not find a Learner / Pupil Name column.');
  const result=records.map(row=>{
    const val=k=>pick(row,CSV_FIELDS[k]);
-   return {name:displayName(val('name')),className:val('class')||'Imported Class',reg:val('reg'),externalId:val('externalId'),
+   return {name:displayName(val('name')),className:val('class')||'Imported Class',reg:val('reg'),externalId:val('externalId'),internalExternal:val('internalExternal'),gradeColumns:Object.fromEntries(assessmentHeaders.map(h=>[h,clean(row[h])])),
      pp:val('pp'),fsm:val('fsm'),eal:val('eal'),send:val('send'),need:val('need'),more:val('more'),
      prior:val('prior'),readingAge:val('readingAge'),readingSS:val('readingSS'),spellingAge:val('spellingAge'),
      spellingSS:val('spellingSS'),ks2Reading:val('ks2Reading'),ks2Maths:val('ks2Maths'),
      target:val('target'),current:val('current')};
  }).filter(s=>s.name);
  if(!result.length)throw new Error('No pupils were found in this marksheet.');
- return {students:result,headers,matched:Object.keys(CSV_FIELDS).filter(k=>headers.some(h=>CSV_FIELDS[k].some(r=>r.test(norm(h)))))};
+ return {students:result,headers,assessmentHeaders,matched:Object.keys(CSV_FIELDS).filter(k=>headers.some(h=>CSV_FIELDS[k].some(r=>r.test(norm(h)))))};
 }
 
 // Edulink imports are proposed, never applied, until a teacher has reviewed them.
@@ -98,6 +100,35 @@ export function placeStudent(plan,seatId,pupilId) {
  }
  assignments[seatId]=pupilId;
  return {assignments,action:displaced?'swapped':source?'moved':'seated'};
+}
+// The workbook's historic assessment sheet stores dated results separately from the
+// import. These calculations are pure and do not depend on any browser storage.
+export function gradeValue(value){
+ const v=clean(value).toUpperCase();
+ const a={'U':0,'E':1,'D':2,'C':3,'B':4,'A':5,'A*':6};
+ if(/^[1-9]$/.test(v))return {scheme:'gcse',rank:Number(v)};
+ if(Object.hasOwn(a,v))return {scheme:'alevel',rank:a[v]};
+ return null;
+}
+export function assessmentGap(result,target){
+ const a=gradeValue(result),b=gradeValue(target);
+ return a&&b&&a.scheme===b.scheme?a.rank-b.rank:null;
+}
+export function assessmentHistory(assessments,pupilId){
+ return (assessments||[]).filter(a=>a.studentId===pupilId).slice().sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.name).localeCompare(String(b.name)));
+}
+export function classQuality(students,classes,classId){
+ const cls=classes.find(c=>c.id===classId);
+ const rows=students.filter(s=>s.classId===classId&&s.active!==false);
+ const seen=new Set(),duplicates=[];
+ for(const s of rows){const key=nameKey(s.name);if(seen.has(key))duplicates.push(s.name);seen.add(key);}
+ const choices=cls?.assessmentHeaders||[];
+ const selected=cls?.selectedAssessment||'';
+ const incomplete=rows.filter(s=>!s.name||!s.target||!(selected?s.gradeColumns?.[selected]:s.current)).map(s=>s.name);
+ const emptySelected=selected?rows.filter(s=>!clean(s.gradeColumns?.[selected])).map(s=>s.name):[];
+ return {total:rows.length,duplicates,incomplete,emptySelected,missingTarget:rows.filter(s=>!clean(s.target)).map(s=>s.name),
+  missingSEND:rows.filter(s=>!clean(s.send)).map(s=>s.name),missingPP:rows.filter(s=>!clean(s.pp)).map(s=>s.name),
+  assessmentHeaders:choices,selectedAssessment:selected};
 }
 // Read ZIP central-directory records. DOCX is a ZIP file. Deflate uses the browser's native
 // DecompressionStream (no external parser, CDN, service, or data transfer).
