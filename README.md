@@ -66,7 +66,7 @@ These changes retain the strict **local only, no automatic student-data storage*
 - **Attainment bands:** comparable GCSE 9–1 or A-level A*–U current/target grades are shown as a five-colour indicator: 2+ below, 1 below, on target, 1 above, 2+ above. Mixed scales, unknown grades or missing results are not compared. Pupil printouts hide this indicator.
 - **OPP seating prompts:** click **OPP seating prompts** to inspect original wording from the imported OPP. A teacher must interpret the guidance and explicitly confirm any pupil-specific seat preference or mandatory rule; the application does not automatically infer one.
 - **Plan notes:** each seating plan version can have private teacher rationale/review notes, retained in the encrypted backup.
-- **Random picker improvements:** the teacher's seating plan marks the selected pupil's seat; an optional name-only projector window updates when pupils are selected. No photography is added to seating cards.
+- **Spinning random pupil picker:** eligible names roll past visibly for around two seconds in Lesson Mode and Teaching Tools (including the name-only projector). The winning pupil is drawn randomly *before* the animation; it does not favour the name that happens to appear on a frame. Reduced-motion settings skip animation. Only pupils explicitly marked **Questioned** are excluded from subsequent selections. No photography is added to seating cards.
 
 ### Six-option seating generator
 
@@ -99,7 +99,7 @@ This version references the original `Seating Plan Tool Final DTA Staff Copy.xls
 - **Behaviour:** pupil-level incident totals by category, editable categories and existing dated records.
 - **Class overview:** attainment vs target, data quality, class demographics and homework/behaviour counts. Includes teacher-controlled local CSV export without OPP text or SEND/PP fields.
 - **Privacy:** hide confidential indicators on the live seating plan, use the name-only projector, or select the top-bar **Privacy lock** (also **Alt+L**) to conceal the workspace instantly. It also closes open dialogs and projector windows. This is a visual privacy screen, **not a password-protected security lock**.
-- **Pupil card labels:** show seat numbers and imported More Able / A-level Internal/External indicators when provided, without requiring photographs.
+- **Pupil card labels:** give **SEND** and **PP** separate, high-priority badges on the live teacher view and printout, followed by any More Able/EAL flags and compact other information. Visible seat numbers have been removed from seating cards to free space; room designer controls and seat identifiers remain available for editing. Pupil printouts and name-only projector hide confidential tags. No photographs are required.
 - **Restore previous seating:** restore the last generated/cleared arrangement in a plan version, in addition to the existing Undo and saved versions.
 
 ### Additional improvements
