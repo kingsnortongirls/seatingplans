@@ -106,3 +106,127 @@ async function pageFonts(objects,dict){
  }
  return map;
 }
+
+// PDF strings may be literal (including octal escapes) or hexadecimal.
+function literalToken(input,start){
+ const out=[];let depth=1,i=start+1;
+ for(;i<input.length;i++){
+  const c=input[i];
+  if(c==='\\'){
+   const next=input[++i];if(next===undefined)break;
+   const escapes={n:10,r:13,t:9,b:8,f:12};
+   if(Object.hasOwn(escapes,next))out.push(escapes[next]);
+   else if(/[0-7]/.test(next)){
+    let oct=next;for(let n=0;n<2&&/[0-7]/.test(input[i+1]||'');n++)oct+=input[++i];
+    out.push(parseInt(oct,8));
+   }else if(next==='\r'){if(input[i+1]==='\n')i++}
+   else if(next!=='\n')out.push(next.charCodeAt(0)&255);
+  }else if(c==='('){depth++;out.push(40)}
+  else if(c===')'){if(--depth===0)break;out.push(41)}
+  else out.push(c.charCodeAt(0)&255);
+ }
+ return [{kind:'bytes',value:Uint8Array.from(out)},i+1];
+}
+function contentTokens(src){
+ const result=[];const size=Math.min(src.length,6*1024*1024);
+ for(let i=0;i<size;){
+  const c=src[i];
+  if(/\s/.test(c)){i++;continue}
+  if(c==='%'){while(i<size&&src[i]!=='\r'&&src[i]!=='\n')i++;continue}
+  if(c==='('){const [t,next]=literalToken(src,i);result.push(t);i=next;continue}
+  if(c==='<'&&src[i+1]!=='<'){
+   const end=src.indexOf('>',i+1);if(end<0)break;
+   result.push({kind:'bytes',value:hexBytes(src.slice(i+1,end))});i=end+1;continue;
+  }
+  if(c==='['||c===']'){result.push({kind:c});i++;continue}
+  let j=i+1;while(j<size&&!/[\s\[\]<>()/%]/.test(src[j]))j++;
+  if(c==='/'){result.push({kind:'name',value:src.slice(i+1,j)});}
+  else if(j>i){result.push({kind:'atom',value:src.slice(i,j)});}
+  i=j;
+  if(result.length>250000)throw Error('PDF has too many text operators.');
+ }
+ return result;
+}
+function decodeText(bytes,cmap){
+ if(!bytes?.length)return '';
+ if(!cmap?.size){
+  if(bytes.length>=2&&bytes[0]===254&&bytes[1]===255){
+   let text='';for(let i=2;i+1<bytes.length;i+=2)text+=String.fromCharCode((bytes[i]<<8)|bytes[i+1]);
+   return text;
+  }
+  return new TextDecoder('windows-1252').decode(bytes);
+ }
+ const widths=[...new Set([...cmap.keys()].map(k=>k.length/2))].sort((a,b)=>b-a);
+ let out='';
+ for(let i=0;i<bytes.length;){
+  let got=false;
+  for(const n of widths){
+   if(i+n>bytes.length)continue;
+   let key='';for(let j=0;j<n;j++)key+=bytes[i+j].toString(16).padStart(2,'0').toUpperCase();
+   if(cmap.has(key)){out+=cmap.get(key);i+=n;got=true;break}
+  }
+  if(!got){out+=new TextDecoder('windows-1252').decode(bytes.subarray(i,i+1));i++}
+ }
+ return out;
+}
+function contentLines(src,fonts){
+ const tokens=contentTokens(src),stack=[],lines=[];
+ let active=false,font='',line='',yOld=null;
+ const flush=()=>{const str=line.replace(/\s+/g,' ').trim();if(str&&lines.length<16000)lines.push(str);line=''};
+ const append=bytes=>{
+  const t=decodeText(bytes,fonts.get(font)).replace(/[\u0000-\u0008\u000b-\u001f]/g,'');
+  if(!t)return;
+  if(line&&!/[\s-]$/.test(line)&&!/^[\s,.!?:;\]\)]/.test(t))line+=' ';
+  line+=t;
+ };
+ for(let i=0;i<tokens.length;i++){
+  const t=tokens[i];
+  if(t.kind==='['){
+   const group=[];while(++i<tokens.length&&tokens[i].kind!==']')group.push(tokens[i]);
+   stack.push({kind:'array',value:group});continue;
+  }
+  if(t.kind!=='atom'||!/^([A-Za-z*'"]+)$/.test(t.value)){stack.push(t);continue}
+  const op=t.value;
+  if(op==='BT'){flush();active=true;yOld=null}
+  else if(op==='ET'){flush();active=false}
+  else if(active&&op==='Tf'){font=stack.findLast(x=>x.kind==='name')?.value||font}
+  else if(active&&(op==='Tj'||op==="'"||op==='"')){
+   if(op!=='Tj')flush();
+   const value=stack.findLast(x=>x.kind==='bytes');if(value)append(value.value);
+  }else if(active&&op==='TJ'){
+   const array=stack.findLast(x=>x.kind==='array');
+   if(array)for(const x of array.value){
+    if(x.kind==='bytes')append(x.value);
+    else if(x.kind==='atom'&&Number(x.value)<-200&&line&&!line.endsWith(' '))line+=' ';
+   }
+  }else if(active&&(op==='T*'||op==='Td'||op==='TD'))flush();
+  else if(active&&op==='Tm'){
+   const numbers=stack.filter(x=>x.kind==='atom').map(x=>Number(x.value));
+   const y=numbers.at(-1);
+   if(Number.isFinite(y)&&yOld!==null&&Math.abs(y-yOld)>2)flush();
+   if(Number.isFinite(y))yOld=y;
+  }
+  stack.length=0;
+ }
+ flush();return lines;
+}
+export async function pdfTextLines(input){
+ const objects=pdfObjects(input);
+ await expandObjects(objects);
+ const pages=[...objects.values()].filter(o=>/\/Type\s*\/Page\b/.test(o.dict)).slice(0,30);
+ if(!pages.length)throw Error('PDF has no readable pages.');
+ const lines=[];
+ for(const page of pages){
+  const fonts=await pageFonts(objects,page.dict);
+  const list=/\/Contents\s*\[([\s\S]*?)\]/.exec(page.dict);
+  const refs=list?[...list[1].matchAll(/(\d+)\s+\d+\s+R/g)].map(x=>Number(x[1])):
+   [Number(/\/Contents\s+(\d+)\s+\d+\s+R/.exec(page.dict)?.[1]||0)].filter(Boolean);
+  for(const id of refs){
+   const object=objects.get(id);if(!object?.stream)continue;
+   lines.push(...contentLines(latin(await streamBytes(object)),fonts));
+   if(lines.length>15000)throw Error('PDF is too long for a One Page Profile.');
+  }
+ }
+ if(!lines.length)throw Error('No selectable PDF text found. Scanned profiles need OCR or the original Word file.');
+ return lines;
+}
