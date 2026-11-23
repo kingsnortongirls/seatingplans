@@ -30,6 +30,10 @@ async def main():
   assert await page.get_by_text('Review Edulink marksheet changes').count()>=1
   await page.locator('#modalForm button[type=submit]').click()
   print('after import title',(await page.locator('main').inner_text())[:340]);print('pageerror',errs)
+  assert await page.get_by_role('button',name='Choose ZIP or Word OPP files').count()==1
+  assert await page.get_by_text('Year 7',exact=False).count()>=1
+  assert await page.get_by_text('Inclusion Matters',exact=True).count()>=1
+  await page.get_by_role('button',name='Skip OPP import for now').click()
   assert await page.get_by_role('button',name='Import next class').count()==1
   await page.get_by_role('button',name="I'm finished · Create backup").click()
   # Some local set_content() contexts are not secure, so subtle crypto may be
