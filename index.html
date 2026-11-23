@@ -11,26 +11,57 @@
 <script type="module" src="js/app.js"></script>
 </head>
 <body>
+<svg class="icon-defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+ <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10H3z"/><path d="M9 20v-7h6v7"/></symbol>
+ <symbol id="i-seats" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+ <symbol id="i-room" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 9v12M15 3v6"/></symbol>
+ <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M2 20v-2a6 6 0 0 1 12 0v2M16 6a3 3 0 0 1 0 6m2 4c2 0 4 2 4 4"/></symbol>
+ <symbol id="i-file" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6zM15 3v5h4M9 12h7M9 16h7"/></symbol>
+ <symbol id="i-clipboard" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="17" rx="2"/><rect x="8" y="2" width="8" height="5" rx="1"/><path d="m8 14 2 2 5-5"/></symbol>
+ <symbol id="i-monitor" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="15" rx="2"/><path d="M8 22h8m-4-4v4"/></symbol>
+ <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 20h18M5 15l5-5 4 3 5-8"/><path d="M17 5h2v2"/></symbol>
+ <symbol id="i-bars" viewBox="0 0 24 24"><path d="M4 20V12h4v8M10 20V5h4v15M16 20v-9h4v9M2 20h20"/></symbol>
+ <symbol id="i-dice" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1"/><circle cx="16" cy="8" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="8" cy="16" r="1"/><circle cx="16" cy="16" r="1"/></symbol>
+ <symbol id="i-shield" viewBox="0 0 24 24"><path d="m12 2 8 3v6c0 5-4 9-8 11-4-2-8-6-8-11V5z"/><path d="m8 12 3 3 5-6"/></symbol>
+ <symbol id="i-backup" viewBox="0 0 24 24"><path d="M4 17v4h16v-4M12 3v13m-5-5 5 5 5-5"/></symbol>
+ <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+ <symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
+ <symbol id="i-printer" viewBox="0 0 24 24"><path d="M6 9V3h12v6M6 18H4V9h16v9h-2M6 15h12v6H6z"/></symbol>
+ <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></symbol>
+ <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="11" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+ <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 11v6m0-10v1"/></symbol>
+ <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-7-7 7 7-7 7"/></symbol>
+ <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9M4 17l12-12 3 3L7 20H4zM14 7l3 3"/></symbol>
+ <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4 7h16l-4-4m4 4-4 4M20 17H4l4-4m-4 4 4 4"/></symbol>
+ <symbol id="i-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9 9a3 3 0 1 1 4 3c-1 .5-1 1-1 3m0 3h.01"/></symbol>
+ <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 2v6m10-6v6M3 10h18"/></symbol>
+ <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+ <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+</svg>
 <div class="shell">
  <aside class="sidebar" aria-label="Main navigation">
-  <div class="identity"><div class="brand-mark" aria-hidden="true">▦</div><div><strong>Seating Plans</strong><small>Private Teacher Toolkit</small></div></div>
+  <div class="identity"><div class="brand-mark" aria-hidden="true"><svg class="ui-icon" aria-hidden="true"><use href="#i-seats"></use></svg></div><div><strong>Seating Plans</strong><small>Private Teacher Toolkit</small></div></div>
   <div class="privacy-pill"><span class="status-dot"></span> Browser-only session</div>
-  <nav id="nav">
-   <button type="button" class="nav-item active" data-view="dashboard"><span>◫</span> Dashboard</button>
-   <button type="button" class="nav-item" data-view="seating"><span>▦</span> Seating plans</button>
-   <button type="button" class="nav-item" data-view="rooms"><span>▤</span> Room designer</button>
-   <button type="button" class="nav-item" data-view="profiles"><span>♙</span> Pupil profiles</button>
-   <button type="button" class="nav-item" data-view="records"><span>▣</span> Teacher records</button>
-   <button type="button" class="nav-item" data-view="lesson"><span>◷</span> Lesson mode</button>
-   <button type="button" class="nav-item" data-view="assessments"><span>▥</span> Assessment history</button>
-   <button type="button" class="nav-item" data-view="overview"><span>◩</span> Class overview</button>
-   <button type="button" class="nav-item" data-view="tools"><span>⚄</span> Teaching tools</button>
-   <button type="button" class="nav-item" data-view="backup"><span>◇</span> Backup &amp; restore</button>
+  <nav id="nav" aria-label="Workspace sections">
+   <div class="nav-heading">PLAN & TEACH</div>
+   <button type="button" class="nav-item" data-view="dashboard"><svg class="ui-icon" aria-hidden="true"><use href="#i-home"></use></svg><span>Dashboard</span></button>
+   <button type="button" class="nav-item" data-view="seating"><svg class="ui-icon" aria-hidden="true"><use href="#i-seats"></use></svg><span>Seating plans</span></button>
+   <button type="button" class="nav-item" data-view="lesson"><svg class="ui-icon" aria-hidden="true"><use href="#i-monitor"></use></svg><span>Lesson mode</span></button>
+   <button type="button" class="nav-item" data-view="rooms"><svg class="ui-icon" aria-hidden="true"><use href="#i-room"></use></svg><span>Room designer</span></button>
+   <button type="button" class="nav-item" data-view="tools"><svg class="ui-icon" aria-hidden="true"><use href="#i-dice"></use></svg><span>Teaching tools</span></button>
+   <div class="nav-heading">PUPIL INFORMATION</div>
+   <button type="button" class="nav-item" data-view="profiles"><svg class="ui-icon" aria-hidden="true"><use href="#i-users"></use></svg><span>Pupil profiles</span></button>
+   <button type="button" class="nav-item" data-view="records"><svg class="ui-icon" aria-hidden="true"><use href="#i-clipboard"></use></svg><span>Teacher records</span></button>
+   <button type="button" class="nav-item" data-view="assessments"><svg class="ui-icon" aria-hidden="true"><use href="#i-chart"></use></svg><span>Assessment history</span></button>
+   <button type="button" class="nav-item" data-view="overview"><svg class="ui-icon" aria-hidden="true"><use href="#i-bars"></use></svg><span>Class overview</span></button>
+   <div class="nav-heading">YOUR DATA</div>
+   <button type="button" class="nav-item" data-view="backup"><svg class="ui-icon" aria-hidden="true"><use href="#i-backup"></use></svg><span>Backup & restore</span></button>
   </nav>
-  <div class="sidebar-bottom"><p class="small">No accounts. No analytics. No data uploads. Save only when you export a backup.</p><button type="button" class="btn btn-ghost btn-block" id="clearSession">Clear session</button></div>
+  <div class="sidebar-bottom"><p class="small">No accounts. No analytics. No data uploads. Save only when you export a backup.</p><button type="button" class="btn btn-ghost btn-block" id="clearSession"><svg class="ui-icon" aria-hidden="true"><use href="#i-lock"></use></svg> Clear session</button></div>
  </aside>
+ <button type="button" id="navBackdrop" class="nav-backdrop" aria-label="Close navigation"></button>
  <div class="main-column">
-  <header class="topbar"><button type="button" class="mobile-menu" id="menuToggle" aria-label="Toggle navigation">☰</button><div id="breadcrumbs">Your workspace</div><div class="top-actions"><span id="saveIndicator" class="save-indicator">Session only</span><button type="button" class="btn btn-small" id="privacyToggle" title="Hide information instantly">◈ Privacy lock</button><button type="button" class="btn btn-small" id="undoButton" title="Undo (Ctrl+Z)">↶ Undo</button><button type="button" class="btn btn-small" id="redoButton" title="Redo (Ctrl+Y)">↷ Redo</button><button type="button" class="btn btn-primary btn-small" id="quickBackup">↓ Backup</button></div></header>
+  <header class="topbar"><button type="button" class="mobile-menu" id="menuToggle" aria-label="Open navigation" aria-expanded="false"><span class="menu-glyph">☰</span></button><div id="breadcrumbs">Your workspace</div><div class="top-actions"><span id="saveIndicator" class="save-indicator">Session only</span><button type="button" class="btn btn-small" id="privacyToggle" title="Hide information instantly"><svg class="ui-icon" aria-hidden="true"><use href="#i-shield"></use></svg><span>Privacy lock</span></button><button type="button" class="btn btn-small" id="undoButton" title="Undo (Ctrl+Z)">↶<span>Undo</span></button><button type="button" class="btn btn-small" id="redoButton" title="Redo (Ctrl+Y)">↷<span>Redo</span></button><button type="button" class="btn btn-primary btn-small" id="quickBackup"><svg class="ui-icon" aria-hidden="true"><use href="#i-backup"></use></svg><span>Backup</span></button></div></header>
   <main id="app" tabindex="-1" aria-live="polite"></main>
  </div>
 </div>
