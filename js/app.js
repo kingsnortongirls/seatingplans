@@ -214,30 +214,51 @@ function profileDetails(s){let opp=s.opp||{};let head=`<div class="profile-head"
 
 function records(){
  const cls=currentClass(),list=currentStudents(),all=data.records.filter(r=>r.classId===classId);
- const filtered=recordFilter==='all'?all:all.filter(r=>r.type===recordFilter);
+ const late=all.filter(isLateRecord),behaviour=all.filter(isBehaviourRecord);
+ const homework=all.filter(r=>r.type==='homework');
+ const filtered=recordFilter==='all'?all:recordFilter==='late'?late:recordFilter==='behaviour'?behaviour:homework;
  const selected=student(selectedRecord)?.classId===classId?student(selectedRecord):list[0];
- const behaviour=all.filter(r=>r.type==='behaviour'),homework=all.filter(r=>r.type==='homework');
- const freq=behaviour.filter(r=>r.studentId===selected?.id);
- const categories=[...new Set([...(data.categories||[]),...behaviour.map(r=>r.category).filter(Boolean)])];
- const catRows=categories.map(type=>'<tr><td>'+esc(type)+'</td><td>'+freq.filter(r=>r.category===type).length+'</td></tr>').join('');
+ const pupilBehaviour=behaviour.filter(r=>r.studentId===selected?.id);
+ const pupilLate=late.filter(r=>r.studentId===selected?.id);
+ const categories=[...new Set([...(data.categories||[]).filter(x=>!/^late to lesson$/i.test(x)),...behaviour.map(r=>r.category).filter(Boolean)])];
+ const catRows=categories.map(type=>'<tr><td>'+esc(type)+'</td><td>'+pupilBehaviour.filter(r=>r.category===type).length+'</td></tr>').join('');
  const cutoff=recordPeriod===0?0:Date.now()-recordPeriod*86400000;
- const recent=homework.filter(r=>!cutoff||new Date(r.date+'T12:00:00').getTime()>=cutoff);
- const missing=recent.filter(r=>r.status==='Missing'),resolved=recent.filter(r=>r.status==='Resolved');
- const totals=list.map(s=>({s,count:missing.filter(r=>r.studentId===s.id).length})).filter(x=>x.count).sort((a,b)=>b.count-a.count).slice(0,12);
- const max=Math.max(1,...totals.map(x=>x.count));
- const trends=totals.length?totals.map(x=>'<div class="mini-bar"><span>'+esc(x.s.name)+'</span><div><i style="width:'+Math.round(x.count/max*100)+'%"></i></div><strong>'+x.count+'</strong></div>').join(''):'<p class="muted tiny">No missing homework records in this period.</p>';
- return heading('Teacher records','Record and analyse homework and behaviour without writing back to Edulink.',
- button('✓ Mark whole-class homework','start-homework','btn btn-primary')+button('+ Record homework','new-homework','btn')+
+ const inRange=r=>!cutoff||new Date((r.date||'')+'T12:00:00').getTime()>=cutoff;
+ const recentHomework=homework.filter(inRange),recentLate=late.filter(inRange);
+ const missing=recentHomework.filter(r=>r.status==='Missing'),resolved=recentHomework.filter(r=>r.status==='Resolved');
+ const bars=(rows,emptyLabel)=>{
+  const totals=list.map(s=>({s,count:rows.filter(r=>r.studentId===s.id).length}))
+   .filter(x=>x.count).sort((a,b)=>b.count-a.count).slice(0,12);
+  if(!totals.length)return '<p class="muted tiny">'+esc(emptyLabel)+'</p>';
+  const max=Math.max(1,...totals.map(x=>x.count));
+  return totals.map(x=>'<div class="mini-bar"><span>'+esc(x.s.name)+'</span><div><i style="width:'+Math.round(x.count/max*100)+'%"></i></div><strong>'+x.count+'</strong></div>').join('');
+ };
+ return heading('Teacher records','Track missing homework, late arrivals and behaviour locally, without writing to Edulink.',
+ button('✓ Mark whole-class homework','start-homework','btn btn-primary')+
+ button('+ Homework','new-homework','btn')+button('+ Late arrival','new-late','btn')+
  button('+ Behaviour entry','new-behaviour','btn')+button('Edit behaviour types','edit-categories','btn'))+
- (!cls?card(empty('No class imported','Add a marksheet to begin tracking.')):'<div class="board-tools"><label>Class'+classChoices()+'</label><label>Show'+choose('filter',['all','homework','behaviour'].map(v=>({value:v,label:v[0].toUpperCase()+v.slice(1)})),recordFilter,'data-action="filter-records"')+'</label></div>'+
- '<div class="grid four">'+stat(homework.length,'Homework entries','All dates')+stat(behaviour.length,'Behaviour entries','All dates')+stat(new Set(all.map(r=>r.studentId)).size,'Pupils with records','Across class')+stat(missing.length,'Currently missing','Selected date range')+'</div>'+
+ (!cls?card(empty('No class imported','Add a marksheet to begin tracking.')):'<div class="board-tools"><label>Class'+classChoices()+'</label><label>Show'+choose('filter',[{value:'all',label:'All records'},{value:'homework',label:'Homework'},{value:'late',label:'Late to lesson'},{value:'behaviour',label:'Other behaviour'}],recordFilter,'data-action="filter-records"')+'</label></div>'+
+ '<div class="grid four">'+stat(homework.length,'Homework entries','All dates')+stat(late.length,'Late arrivals','All dates')+
+ stat(behaviour.length,'Behaviour entries','Other categories')+stat(new Set(all.map(r=>r.studentId)).size,'Pupils with records','Across class')+'</div>'+
  card(recordRows(filtered),'Entries ('+filtered.length+')')+
  '<div class="grid two">'+card('<div class="board-tools"><label>Pupil'+choose('recordPupil',list.map(s=>({value:s.id,label:s.name})),selected?.id||'','data-action="select-record-pupil"')+'</label></div>'+
- '<p><strong>'+freq.length+' total behaviour incidents</strong> for '+esc(selected?.name||'pupil')+'</p><div class="table-wrap"><table><thead><tr><th>Behaviour category</th><th>Count</th></tr></thead><tbody>'+catRows+'</tbody></table></div>','Behaviour summary')+
+ '<p><strong>'+pupilBehaviour.length+' behaviour incident(s)</strong> for '+esc(selected?.name||'this pupil')+'</p><div class="table-wrap"><table><thead><tr><th>Behaviour category</th><th>Count</th></tr></thead><tbody>'+catRows+'</tbody></table></div>','Behaviour summary')+
  card('<div class="board-tools"><label>Period'+choose('period',[{value:'7',label:'Last 7 days'},{value:'30',label:'Last 30 days'},{value:'90',label:'Last 90 days'},{value:'0',label:'All dates'}],String(recordPeriod),'data-action="change-record-period"')+'</label></div>'+
- '<p><strong>'+missing.length+'</strong> missing · <strong>'+resolved.length+'</strong> resolved in this period</p>'+trends,'Homework trends')+'</div>');
+ '<p><strong>'+missing.length+'</strong> missing · <strong>'+resolved.length+'</strong> resolved in this period</p>'+
+ bars(missing,'No missing homework records for this period.'),'Homework trends')+
+ card('<p><strong>'+late.length+'</strong> late arrival(s) recorded in this class in total.</p>'+
+ '<p><strong>'+recentLate.length+'</strong> in the selected period; <strong>'+pupilLate.length+'</strong> for '+esc(selected?.name||'the selected pupil')+' overall.</p>'+
+ bars(recentLate,'No late arrivals recorded in this period.')+
+ '<p class="muted tiny">Counts include older behaviour entries categorised as “Late to lesson”, without double-counting them as other behaviour.</p>','Lateness trends')+'</div>');
 }
-function recordRows(rows,mini=false){return rows.length?`<div class="table-wrap"><table><thead><tr><th>Date</th><th>Pupil</th><th>Category</th><th>Status</th><th>Details</th>${mini?'':'<th></th>'}</tr></thead><tbody>${rows.slice().sort((a,b)=>b.date.localeCompare(a.date)).map(r=>`<tr><td>${fmtDate(r.date)}</td><td>${esc(student(r.studentId)?.name||'Former pupil')}</td><td>${esc(r.category||r.type)}</td><td>${badge(r.status||'Recorded',r.status==='Resolved'?'green':'amber')}</td><td>${esc(short(r.notes||r.assignment||'',65))}</td>${mini?'':`<td>${button('Edit','edit-record','btn btn-small',`data-id="${esc(r.id)}"`)}</td>`}</tr>`).join('')}</tbody></table></div>`:empty('No records','Add a homework or behaviour entry to start a local record.');}
+function recordDetail(r){
+ if(isLateRecord(r)){
+  const bits=[r.lesson?'Lesson '+r.lesson:'',r.minutesLate?'Late by '+r.minutesLate+' min':'',r.notes||''];
+  return bits.filter(Boolean).join(' · ');
+ }
+ return r.notes||r.assignment||'';
+}
+function recordRows(rows,mini=false){return rows.length?`<div class="table-wrap"><table><thead><tr><th>Date</th><th>Pupil</th><th>Category</th><th>Status</th><th>Details</th>${mini?'':'<th></th>'}</tr></thead><tbody>${rows.slice().sort((a,b)=>(b.date||'').localeCompare(a.date||'')).map(r=>`<tr><td>${fmtDate(r.date)}</td><td>${esc(student(r.studentId)?.name||'Former pupil')}</td><td>${esc(isLateRecord(r)?'Late to lesson':r.category||r.type)}</td><td>${badge(r.status||'Recorded',r.status==='Resolved'?'green':'amber')}</td><td>${esc(short(recordDetail(r),85))}</td>${mini?'':`<td>${button('Edit','edit-record','btn btn-small',`data-id="${esc(r.id)}"`)}</td>`}</tr>`).join('')}</tbody></table></div>`:empty('No records','Add homework, lateness or behaviour entries to start a local record.');}
 
 function setPrivacyLock(locked){
  privacyLocked=!!locked;
