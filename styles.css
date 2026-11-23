@@ -36,3 +36,35 @@
  .canvas.it3 .seat strong{font-size:9px}
  .canvas.it3 .it3-island{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+
+/* IT2: 33 seats, including every normally vacant seat. Central ten seats
+   are in five paired rows, and all desks remain independently editable. */
+.canvas.it2 .board{top:auto;bottom:1%;left:44%;width:22%;height:6%;font-size:8px;letter-spacing:.3px}
+.canvas.it2 .seat{width:8.2%;height:8.3%;min-height:27px;z-index:3}
+.canvas.it2 .seat strong{font-size:clamp(7px,.69vw,10px)}
+.canvas.it2 .seat small{font-size:8px}
+.canvas.it2 .teacher-desk{z-index:4;max-width:15%;min-height:24px}
+.canvas.it2 .it2-table{
+ position:absolute;z-index:0;background:#bad0ec;border:2px solid #8baddd;border-radius:5px;
+ pointer-events:none;
+}
+.canvas.it2 .it2-left{left:3.3%;top:8%;width:9.4%;height:87%}
+.canvas.it2 .it2-right{left:87.3%;top:14%;width:9.4%;height:77%}
+.canvas.it2 .it2-middle{left:42.8%;top:23%;width:21.5%;height:60%}
+.canvas.it2 .it2-upper-left{left:23%;top:7%;width:20%;height:12%}
+.canvas.it2 .it2-upper-right{left:67%;top:7%;width:20%;height:12%}
+.canvas.it2 .it2-lower-left{left:23%;top:84%;width:20%;height:12%}
+.canvas.it2 .it2-lower-right{left:67%;top:84%;width:20%;height:12%}
+@media(max-width:740px){
+ .canvas.it2{min-height:470px}
+ .canvas.it2 .seat{width:8.4%;height:8.1%;min-height:27px;padding:1px}
+ .canvas.it2 .seat strong{font-size:7px}
+ .canvas.it2 .seat small{display:none}
+ .canvas.it2 .teacher-desk{font-size:6px}
+ .canvas.it2 .board{font-size:6px}
+}
+@media print{
+ .canvas.it2 .seat{min-height:0;height:8.3%;width:8.2%}
+ .canvas.it2 .seat strong{font-size:9px}
+ .canvas.it2 .it2-table{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
