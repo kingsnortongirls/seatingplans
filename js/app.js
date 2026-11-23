@@ -181,7 +181,7 @@ function exportClassSummary(){
    String(records.filter(r=>r.studentId===s.id&&r.type==='homework'&&r.status==='Missing').length),
    String(records.filter(r=>r.studentId===s.id&&r.type==='behaviour').length)]);
  }
- const csv=rows.map(row=>row.map(value=>'"'+String(value).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+ const csv=rows.map(row=>row.map(value=>{let v=String(value);if(/^[=+@\-\t\r]/.test(v))v="'"+v;return '"'+v.replace(/"/g,'""')+'"';}).join(',')).join('\r\n');
  download(csv,'class-overview-'+isoDate()+'.csv','text/csv;charset=utf-8');
  notice('Teacher summary exported locally. No OPP or SEND/PP fields were included.','success');
 }
