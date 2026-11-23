@@ -176,7 +176,8 @@ function contentLines(src,fonts){
  const append=bytes=>{
   const t=decodeText(bytes,fonts.get(font)).replace(/[\u0000-\u0008\u000b-\u001f]/g,'');
   if(!t)return;
-  if(line&&!/[\s-]$/.test(line)&&!/^[\s,.!?:;\]\)]/.test(t))line+=' ';
+  // A TJ array can contain one glyph per string. Do not insert a space
+  // unless the source text or numeric kerning actually specifies one.
   line+=t;
  };
  for(let i=0;i<tokens.length;i++){
@@ -197,7 +198,7 @@ function contentLines(src,fonts){
    const array=stack.findLast(x=>x.kind==='array');
    if(array)for(const x of array.value){
     if(x.kind==='bytes')append(x.value);
-    else if(x.kind==='atom'&&Number(x.value)<-200&&line&&!line.endsWith(' '))line+=' ';
+    else if(x.kind==='atom'&&Number(x.value)<-150&&line&&!line.endsWith(' '))line+=' ';
    }
   }else if(active&&(op==='T*'||op==='Td'||op==='TD'))flush();
   else if(active&&op==='Tm'){
