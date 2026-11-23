@@ -220,7 +220,37 @@ export function buildPreset(kind,name) {
 export function newPlan(classId,room,label) {
  return {id:uid(),classId,roomId:room.id,name:label||'Autumn 1',created:new Date().toISOString(),
   layout:clone({kind:room.kind||'',seats:room.seats,teacher:room.teacher,board:room.board}),assignments:{},locks:[],
-  rules:[],notes:''};
+  rules:[],accessPreference:{send:false,pp:false},notes:''};
+}
+// A teacher can explicitly opt into preferring accessible seating for SEND,
+// Pupil Premium or both. No characteristic is inferred as a requirement.
+const marked = value => {
+ const v=clean(value).toLowerCase();
+ return !!v&&!['n','no','none','false','0','not eligible','not applicable','na','n/a','-','unknown','null'].includes(v);
+};
+const pupilPremium = value => ['yes','y','true','1','pp','eligible','pupil premium'].includes(clean(value).toLowerCase());
+export function accessEligible(student,settings={}) {
+ return !!((settings.send&&marked(student?.send))||(settings.pp&&pupilPremium(student?.pp)));
+}
+export function accessReport(plan,studentList,assignments=plan.assignments){
+ const settings=plan.accessPreference||{};
+ const enabled=!!(settings.send||settings.pp);
+ const accessible=plan.layout.seats.filter(s=>s.priority==='access');
+ const eligible=enabled?studentList.filter(s=>accessEligible(s,settings)):[];
+ const byId=new Map(studentList.map(s=>[s.id,s]));
+ const seatById=new Map(plan.layout.seats.map(s=>[s.id,s]));
+ const locked=(plan.locks||[]).filter(id=>assignments[id]&&byId.has(assignments[id])&&seatById.has(id));
+ const fixedEligible=locked.filter(id=>accessEligible(byId.get(assignments[id]),settings));
+ const fixedEligibleAccess=fixedEligible.filter(id=>seatById.get(id)?.priority==='access').length;
+ const fixedAccess=locked.filter(id=>seatById.get(id)?.priority==='access').length;
+ const usableOpenAccess=Math.max(0,accessible.length-fixedAccess);
+ const possible=fixedEligibleAccess+Math.min(usableOpenAccess,Math.max(0,eligible.length-fixedEligible.length));
+ const unmet=eligible.filter(s=>seatById.get(Object.keys(assignments).find(id=>assignments[id]===s.id))?.priority!=='access');
+ return {
+  enabled,selected:{send:!!settings.send,pp:!!settings.pp},
+  capacity:accessible.length,eligible:eligible.length,possible,shortfall:Math.max(0,eligible.length-possible),
+  assigned:eligible.length-unmet.length,unmet,lockedAccess:fixedAccess
+ };
 }
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function issuesFor(plan,assignments=plan.assignments) {
@@ -234,7 +264,7 @@ export function issuesFor(plan,assignments=plan.assignments) {
  return issues;
 }
 export function preferred(seat,mode,board='front'){return mode==='front'?(board==='back'?seat.y>=57:seat.y<=43):mode==='access'?seat.priority==='access':mode==='preferred'?['access','preferred'].includes(seat.priority):true;}
-function score(plan,assigned,studentsById) {
+function score(plan,assigned,studentsById,eligibleIds=new Set()) {
  const seated=Object.fromEntries(Object.entries(assigned).map(([seat,id])=>[id,plan.layout.seats.find(s=>s.id===seat)]));
  let cost=0,hard=0;
  for(const r of plan.rules||[]){const a=seated[r.a],b=seated[r.b];if(!a)continue;
@@ -245,6 +275,7 @@ function score(plan,assigned,studentsById) {
  for(const [seat,id] of Object.entries(assigned)){
   const s=plan.layout.seats.find(x=>x.id===seat),p=studentsById[id];if(!s||!p)continue;
   if(s.priority==='avoid')cost+=120;
+  if(eligibleIds.has(id)&&s.priority!=='access')cost+=1800;
   // A small optional spread bonus; protected characteristics never enter the algorithm.
   if(p.prior&&/high/i.test(p.prior))cost+=Math.max(0,28-(plan.layout.board==='back'?100-s.y:s.y))*0.01;
  }
@@ -258,24 +289,32 @@ export function autoSeat(plan,studentList) {
  const available=seats.filter(s=>!Object.hasOwn(fixed,s.id)).map(s=>s.id);
  const remaining=ids.filter(id=>!Object.values(fixed).includes(id));
  if(remaining.length>available.length)throw new Error('Not enough unlocked seats.');
+ const eligibleIds=new Set(studentList.filter(s=>accessEligible(s,plan.accessPreference)).map(s=>s.id));
+ const shuffle=items=>{const a=[...items];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
  let best=null;
  for(let run=0;run<16;run++){
-  let order=[...available].sort(()=>Math.random()-.5);
-  let current={...fixed};for(let i=0;i<remaining.length;i++)current[order[i]]=remaining[i];
-  let rating=score(plan,current,studentsById).cost;
+  const accessOrder=shuffle(seats.filter(s=>s.priority==='access'&&available.includes(s.id)).map(s=>s.id));
+  const otherOrder=shuffle(available.filter(id=>!accessOrder.includes(id)));
+  const eligible=shuffle(remaining.filter(id=>eligibleIds.has(id)));
+  const others=shuffle(remaining.filter(id=>!eligibleIds.has(id)));
+  // Use accessible positions for the opted-in group first. Do not move locked pupils.
+  let current={...fixed};
+  for(const id of eligible)current[(accessOrder.shift()||otherOrder.shift())]=id;
+  for(const id of others)current[(otherOrder.shift()||accessOrder.shift())]=id;
+  let rating=score(plan,current,studentsById,eligibleIds).cost;
   for(let step=0;step<650;step++){
    const movable=Object.keys(current).filter(s=>!Object.hasOwn(fixed,s));
    if(!movable.length)break;
    const a=movable[Math.floor(Math.random()*movable.length)];
    const b=available[Math.floor(Math.random()*available.length)];
    const trial={...current};const temp=trial[a];if(trial[b]===undefined){delete trial[a];trial[b]=temp;}else{trial[a]=trial[b];trial[b]=temp;}
-   const next=score(plan,trial,studentsById).cost;
+   const next=score(plan,trial,studentsById,eligibleIds).cost;
    if(next<rating||Math.random()<0.012*Math.exp((rating-next)/150)){current=trial;rating=next;}
   }
-  if(!best||rating<best.rating)best={assignments:current,rating,hard:score(plan,current,studentsById).hard};
+  if(!best||rating<best.rating)best={assignments:current,rating,hard:score(plan,current,studentsById,eligibleIds).hard};
   if(best.hard===0&&best.rating<10)break;
  }
- return {...best,issues:issuesFor(plan,best.assignments)};
+ return {...best,issues:issuesFor(plan,best.assignments),access:accessReport(plan,studentList,best.assignments)};
 }
 export function makeGroups(students,plan,{size=4,mode='random'}={}) {
  const n=Math.max(1,Math.ceil(students.length/size));
