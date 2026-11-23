@@ -157,3 +157,82 @@
  #redoButton::before{content:"↷";font-size:18px}
  #quickBackup{font-size:10px!important;padding:6px!important}
 }
+
+/* Teacher view: show SEND/PP as clear individual badges rather than
+   truncating a combined string. Room coordinates and seat IDs remain intact. */
+.canvas .seat .seat-tags{
+ display:flex;align-items:center;justify-content:center;flex-wrap:wrap;
+ gap:2px;width:100%;max-height:25px;overflow:hidden;line-height:1;
+}
+.canvas .seat .seat-tag{
+ display:inline-flex;align-items:center;justify-content:center;
+ border-radius:3px;padding:2px 3px;
+ font-size:clamp(6px,.58vw,8px);font-weight:850;line-height:1.05;
+ white-space:nowrap;border:1px solid transparent;
+}
+.canvas .seat .seat-tag.tag-send{background:#e3d8fa;color:#4e2a82;border-color:#bda3eb}
+.canvas .seat .seat-tag.tag-pp{background:#f9e4b7;color:#70420a;border-color:#e3bc70}
+.canvas .seat .seat-tag.tag-more{background:#dceafa;color:#225488;border-color:#a6c9eb}
+.canvas .seat .seat-tag.tag-eal{background:#d2efe9;color:#17655d;border-color:#9ad6cb}
+.canvas .seat .seat-extra{
+ display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;
+ white-space:nowrap;font-size:7px;line-height:1.1;color:#3d5770;
+}
+.canvas .seat .seat-meta{
+ display:block;width:100%;font-size:7px;line-height:1.1;
+ overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.canvas .seat strong{max-width:100%;text-align:center}
+@media(max-width:740px){
+ .canvas.it3 .seat .seat-tags,.canvas.it2 .seat .seat-tags{
+  display:flex;gap:1px;max-height:20px;
+ }
+ .canvas.it3 .seat .seat-tag,.canvas.it2 .seat .seat-tag{
+  font-size:6px;padding:1px 2px;border-radius:2px;
+ }
+ .canvas.it3 .seat .seat-extra,.canvas.it2 .seat .seat-extra{
+  display:none;
+ }
+ .canvas.it3 .seat .seat-meta,.canvas.it2 .seat .seat-meta{
+  display:none;
+ }
+}
+@media print{
+ .print-teacher .canvas .seat .seat-tags{
+  display:flex!important;max-height:none!important;gap:1px!important;
+  flex-wrap:wrap!important;overflow:hidden!important;
+ }
+ .print-teacher .canvas .seat .seat-tag{
+  display:inline-flex!important;font-size:7px!important;
+  padding:1px 2px!important;line-height:1!important;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;
+ }
+ .print-teacher .canvas .seat .seat-extra{
+  display:block!important;font-size:6px!important;
+ }
+ .print-teacher .canvas .seat .seat-meta{
+  display:block!important;font-size:6px!important;
+ }
+ .print-teacher .canvas .seat strong{font-size:9px!important}
+ .print-pupil .canvas .seat .seat-tags,
+ .print-pupil .canvas .seat .seat-extra,
+ .print-pupil .canvas .seat .seat-meta{display:none!important}
+}
+/* The rolling animation is visual only; the final choice is fixed beforehand. */
+.picker-stage{overflow:hidden;transition:border-color .2s,background .2s}
+.picker-stage [data-picker-display]{display:inline-block;max-width:100%;overflow-wrap:anywhere}
+.picker-stage.is-spinning{
+ border-style:solid;border-color:#397ec6;
+ background:linear-gradient(120deg,#e6f0ff,#f9fcff,#e6f0ff);
+}
+.picker-stage.is-spinning [data-picker-display]{
+ animation:picker-pulse .28s ease-in-out infinite alternate;
+ color:#154a84;
+}
+@keyframes picker-pulse{
+ from{opacity:.72;transform:translateY(-2px)}
+ to{opacity:1;transform:translateY(2px)}
+}
+@media(prefers-reduced-motion:reduce){
+ .picker-stage.is-spinning [data-picker-display]{animation:none}
+}
