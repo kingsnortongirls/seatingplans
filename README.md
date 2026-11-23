@@ -58,6 +58,34 @@ The seating plan displays the total eligible pupils, number of accessible seats,
 
 These changes retain the strict **local only, no automatic student-data storage** design. Backups and restoration remain encrypted and entirely browser based. Always test with synthetic data and obtain school approval before using real pupil files.
 
+## Classroom features, generation and privacy verification
+
+### Teacher-only teaching features
+
+- **Projector view:** opens a separate name-only classroom view. Pupil names and their positions are the only pupil information copied into its page. SEND/PP, OPP content, attainment, notes and photographs are not included. Reopen the projector view to focus it; the random name picker highlights the selected seat and can request full-screen display, depending on browser permissions.
+- **GCSE attainment bands:** numeric current/target grades 1 to 9 are shown as a five-colour indicator: 2+ below, 1 below, on target, 1 above, 2+ above. Non-numeric or missing grades are not compared. Pupil printouts hide this indicator.
+- **OPP seating prompts:** click **OPP seating prompts** to inspect original wording from the imported OPP. A teacher must interpret the guidance and explicitly confirm any pupil-specific seat preference or mandatory rule; the application does not automatically infer one.
+- **Plan notes:** each seating plan version can have private teacher rationale/review notes, retained in the encrypted backup.
+- **Random picker improvements:** the teacher's seating plan marks the selected pupil's seat; an optional name-only projector window updates when pupils are selected. No photography is added to seating cards.
+
+### Six-option seating generator
+
+Click **Generate seats** to select the priorities before generating:
+1. Prefer accessible seats for SEND pupils
+2. Prefer accessible seats for Pupil Premium pupils
+3. Keep teacher-specified pupils apart
+4. Preserve existing locked seats
+5. Balance high and low prior attainment across table groups
+6. Apply front-seat rules for individually selected pupils
+
+Nothing is changed until the **Review proposed seating plan** screen is explicitly accepted. It reports required conflicts, advisory preferences, accessible-seat shortfalls and affected pupils. Opting out of locked seats clears locks only when the teacher applies the proposal. Disabling a mandatory rule does not delete it: any resulting conflict must still be acknowledged explicitly before application. Options are remembered per plan version, and Undo is available.
+
+### Verify backups and test that pupil data remains local
+
+**Backup & restore** now has **Verify downloaded backup**. Choose a downloaded `.seatingplan` file, enter its password and locally decrypt it without changing the session. It reports whether the file is readable and whether it exactly matches the current session. The 'Changes not backed up' marker is only cleared after an exact successful verification; an attempted download alone cannot guarantee that a file was retained.
+
+`python tests/privacy_e2e.py` uses localhost and synthetic pupils to test the real (not disabled) Content Security Policy, verify name-only projector output, block an attempted external POST, round-trip the encrypted backup and restore it into a clean browser session. `python tests/smoke.py` covers the general interface; `node tests/crypto.mjs` checks encryption and decryption. The test suite requires locally installed Playwright and Chromium. **Only synthetic pupil records should ever be used in these tests.** The application is still subject to school IT and data-protection approval.
+
 ## Install on GitHub Pages
 
 1. Upload `index.html`, `styles.css` and the `js` folder to the `main` branch of `kingsnortongirls/seatingplans`.
