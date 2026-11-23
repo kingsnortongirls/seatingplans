@@ -49,6 +49,15 @@ From a seating plan, choose **SEND / PP accessible seats**. Tick SEND, PP or bot
 
 The seating plan displays the total eligible pupils, number of accessible seats, a warning when marked accessible capacity is insufficient (including when locks occupy those seats), and a teacher-only list of eligible pupils not placed in accessible seats after generation. It is a preference, not an assumption that everyone with SEND or PP needs a special position. Teachers should confirm individual provision and adjust seats manually where appropriate. All eligibility checks, optimisation and reporting happen **locally in the browser**, and no pupil details or preferences are sent over the network. Preferences and results are included only when the teacher explicitly exports an encrypted backup.
 
+## Four priority classroom improvements
+
+1. **Non-destructive pupil swapping:** Move an already seated pupil onto another occupied seat to swap the two places. Locked seats are protected and the change can be undone. Trying to place a previously unseated pupil onto an occupied seat is rejected rather than silently removing the other pupil.
+2. **Named seating-rule validation:** Seating plan rules are classified as required or advisory. The seating plan shows the affected pupils and unresolved rules. If a generated proposal breaches a required rule, the current plan stays unchanged unless the teacher explicitly chooses **Apply despite conflicts**.
+3. **Edulink import review:** Before anything is changed, the browser shows suggested matched pupils, additions, duplicates and possible name changes. Where a matching identifier exists in the Edulink file it is used within the same teaching class; otherwise a unique pupil-name match is suggested. Staff can manually match renamed pupils and choose whether missing pupils should become **inactive**. Missing pupils are retained by default, and existing seating versions, OPPs, notes and records remain linked to matched pupils.
+4. **Whole-class missing homework:** Choose **Mark homework** from Seating Plans (or **Mark whole-class homework** from Teacher Records), enter the task and due date, then tap pupils on the plan or class list. The selection is temporary until **Save missing records** is confirmed. Repeat marking of the same pupil, task and due date updates the existing local homework record rather than duplicating it.
+
+These changes retain the strict **local only, no automatic student-data storage** design. Backups and restoration remain encrypted and entirely browser based. Always test with synthetic data and obtain school approval before using real pupil files.
+
 ## Install on GitHub Pages
 
 1. Upload `index.html`, `styles.css` and the `js` folder to the `main` branch of `kingsnortongirls/seatingplans`.
