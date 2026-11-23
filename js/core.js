@@ -350,12 +350,78 @@ export function gradeGap(student){
   label:gap===0?'On target':gap<0?Math.abs(gap)+' grade(s) below target':gap+' grade(s) above target'};
 }
 // Read only explicit OPP phrases. No text is transmitted or sent to AI.
+// Match *explicit seating instructions* only. In particular, mention of
+// accessible reading materials, board copies or task boards is not a seat rule.
+// The result is a teacher-reviewable suggestion, never an automatic change.
 export function oppSeatingHints(opp){
  const sections=['adaptations','adjustments','about'];
- const lines=sections.flatMap(section=>(Array.isArray(opp?.[section])?opp[section]:[]).map(value=>({section,text:clean(value)})));
- return lines.filter(({text})=>text&&/(sit|seat|sitting|position|front|board|aisle|teacher|accessible)/i.test(text)&&/(seat|sit|front|near|next to|close to|board|aisle|accessible|position)/i.test(text)).slice(0,30);
+ const groups=new Map();
+ const conditions=[
+  {mode:'front',label:'Sit towards the front',patterns:[
+   /\b(?:seat(?:ed|ing)?|sit(?:ting)?|sits?|position(?:ed|ing)?|preferential seating|place(?:d)?)\b.{0,60}\b(?:at|in|near|towards?|to|on)\s+(?:the\s+)?(?:front|first row)\b/i,
+   /\b(?:front(?:\s+row)?\s+seat(?:ing)?|front of (?:the )?classroom)\b/i,
+   /\b(?:seat(?:ed|ing)?|sit|position(?:ed)?)\b.{0,45}\b(?:near|close to|next to)\s+(?:the\s+)?(?:whiteboard|smartboard|interactive board)\b/i
+  ]},
+  {mode:'teacher',label:'Sit near the teacher',patterns:[
+   /\b(?:seat(?:ed|ing)?|sit(?:ting)?|sits?|position(?:ed)?|place(?:d)?|desk)\b.{0,65}\b(?:near|close to|next to|beside)\s+(?:the\s+)?(?:teacher|teaching staff)\b/i,
+   /\b(?:near|close to|next to|beside)\s+(?:the\s+)?teacher(?:'?s)?\s+(?:desk|seat)\b/i
+  ]},
+  {mode:'solo',label:'Prefer sitting independently',patterns:[
+   /\b(?:seat(?:ed|ing)?|sit(?:ting)?|sits?|position(?:ed)?|place(?:d)?)\b.{0,48}\b(?:on (?:my|their|his|her) own|alone|independently|by (?:myself|themselves)|separately|away from (?:other )?(?:pupils|students|peers))\b/i,
+   /\b(?:individual|separate|own)\s+(?:desk|seat|workstation)\b/i
+  ]},
+  {mode:'access',label:'Easy-access seat',patterns:[
+   /\b(?:seat(?:ed|ing)?|sitting|desk|position)\b.{0,55}\b(?:accessible seating|easy access|wheelchair access|accessible seat|unobstructed access)\b/i,
+   /\b(?:accessible seat(?:ing)?|wheelchair-accessible (?:desk|seat)|easy-access seat)\b/i
+  ]}
+ ];
+ const manual=[
+  /\b(?:seat(?:ed|ing)?|sit(?:ting)?|sits?|place(?:d)?|position(?:ed)?)\b.{0,65}\b(?:away from|not next to|near|next to)\s+(?:the\s+)?(?:door|window|radiator|light|corridor|distraction|specific pupil|friend)\b/i,
+  /\b(?:sit|seat|seating)\b.{0,45}\b(?:back|rear|middle)\s+(?:of the|of)\s+(?:room|classroom)\b/i
+ ];
+ for(const section of sections){
+  const lines=Array.isArray(opp?.[section])?opp[section]:[];
+  for(const value of lines){
+   const source=clean(value);
+   if(!source)continue;
+   // Keep the source sentence verbatim so teachers can check the context.
+   const segments=source.split(/(?:[.!?](?=\s|$)|[;\r\n]|[•●])/g).map(clean).filter(Boolean);
+   for(const text of segments){
+    if(text.length>600)continue;
+    // Do not reinterpret explicit negations as positive seating preferences.
+    if(/\b(?:do not|don't|must not|should not|never|no need to)\s+(?:sit|seat|be seated)\b/i.test(text))continue;
+    const found=conditions.filter(item=>item.patterns.some(regex=>regex.test(text)));
+    for(const spec of found){
+     const key=spec.mode;
+     if(!groups.has(key))groups.set(key,{mode:key,label:spec.label,section,text,evidence:[],reviewOnly:false});
+     const item=groups.get(key);
+     if(!item.evidence.includes(text))item.evidence.push(text);
+    }
+    if(!found.length&&manual.some(regex=>regex.test(text))){
+     const key='review';
+     if(!groups.has(key))groups.set(key,{mode:key,label:'Other seating guidance: review manually',section,text,evidence:[],reviewOnly:true});
+     const item=groups.get(key);
+     if(!item.evidence.includes(text))item.evidence.push(text);
+    }
+   }
+  }
+ }
+ return [...groups.values()].map(item=>({...item,evidence:item.evidence.slice(0,8)}));
 }
+
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+const soloClear=(seat,assigned,layout)=>{
+ if(!seat)return false;
+ return !Object.entries(assigned).some(([id,pupil])=>id!==seat.id&&pupil&&layout.seats.some(other=>other.id===id&&Math.hypot(other.x-seat.x,other.y-seat.y)<15));
+};
+const nearbyTeacher=(seat,layout)=>{
+ if(!seat||!layout?.teacher)return false;
+ const desks=layout.seats.slice().sort((a,b)=>
+  Math.hypot(a.x-layout.teacher.x,a.y-layout.teacher.y)-Math.hypot(b.x-layout.teacher.x,b.y-layout.teacher.y));
+ const eligible=desks.slice(0,Math.max(1,Math.ceil(desks.length*.3)));
+ return eligible.some(s=>s.id===seat.id);
+};
+
 // Human-readable checks are separate from the optimiser: required vs advisory,
 // fulfilled vs pending/unfulfilled, and the exact affected pupils.
 export function auditRules(plan,studentList,assignments=plan.assignments){
@@ -376,7 +442,11 @@ export function auditRules(plan,studentList,assignments=plan.assignments){
    return {...base,status:bad?'unmet':'met',description:rule.mode==='group'?name+' must be in different table groups':name+' must be at least '+(Number(rule.distance)||15)+' units apart'};
   }
   if(rule.type==='together')return {...base,status:distance(first,second)>19?'unmet':'met',description:name+' are preferred together'};
-  if(rule.type==='priority')return {...base,status:preferred(first,rule.mode,plan.layout.board)?'met':'unmet',description:a.name+' needs '+(rule.mode==='front'?'a front position':rule.mode==='access'?'an easy-access seat':'a preferred-access seat')};
+  if(rule.type==='priority'){
+   const ok=rule.mode==='solo'?soloClear(first,assignments,plan.layout):preferred(first,rule.mode,plan.layout.board,plan.layout);
+   const kind={front:'a front position',teacher:'a seat near the teacher desk',solo:'a seat without an immediately adjacent pupil',access:'an easy-access seat',preferred:'a preferred-access seat'}[rule.mode]||'a selected seat type';
+   return {...base,status:ok?'met':'unmet',description:a.name+' needs '+kind};
+  }
   return {...base,status:'invalid',description:'Unknown seating rule type'};
  });
  return {
@@ -394,18 +464,18 @@ export function issuesFor(plan,assignments=plan.assignments) {
  for(const r of plan.rules||[]){const a=byStudent[r.a],b=byStudent[r.b];if(!a)continue;
   if(r.type==='apart'&&b){const bad=r.mode==='group'?a.group===b.group:distance(a,b)<(Number(r.distance)||15);if(bad)issues.push('Separation rule not met');}
   if(r.type==='together'&&b&&distance(a,b)>19)issues.push('Preferred pairing not met');
-  if(r.type==='priority'&&r.strict&&!preferred(a,r.mode,plan.layout.board))issues.push('Required seat priority not met');
+  if(r.type==='priority'&&r.strict&&!(r.mode==='solo'?soloClear(a,assignments,plan.layout):preferred(a,r.mode,plan.layout.board,plan.layout)))issues.push('Required seat priority not met');
  }
  return issues;
 }
-export function preferred(seat,mode,board='front'){return mode==='front'?(board==='back'?seat.y>=57:seat.y<=43):mode==='access'?seat.priority==='access':mode==='preferred'?['access','preferred'].includes(seat.priority):true;}
+export function preferred(seat,mode,board='front',layout=null){return mode==='front'?(board==='back'?seat.y>=57:seat.y<=43):mode==='teacher'?nearbyTeacher(seat,layout):mode==='access'?seat.priority==='access':mode==='preferred'?['access','preferred'].includes(seat.priority):true;}
 function score(plan,assigned,studentsById,eligibleIds=new Set(),options={}) {
  const seated=Object.fromEntries(Object.entries(assigned).map(([seat,id])=>[id,plan.layout.seats.find(s=>s.id===seat)]));
  let cost=0,hard=0;
  for(const r of plan.rules||[]){const a=seated[r.a],b=seated[r.b];if(!a)continue;
   if(r.type==='apart'&&b&&options.keepApart!==false){const violated=r.mode==='group'?a.group===b.group:distance(a,b)<(Number(r.distance)||15);if(violated){cost+=30000;hard++;}}
   if(r.type==='together'&&b){cost+=Math.max(0,distance(a,b)-16)*25;}
-  if(r.type==='priority'&&(r.mode!=='front'||options.front!==false)&&!preferred(a,r.mode,plan.layout.board)){cost+=r.strict?30000:350;if(r.strict)hard++;}
+  if(r.type==='priority'&&(r.mode!=='front'||options.front!==false)&&!(r.mode==='solo'?soloClear(a,assigned,plan.layout):preferred(a,r.mode,plan.layout.board,plan.layout))){cost+=r.strict?30000:1200;if(r.strict)hard++;}
  }
  for(const [seat,id] of Object.entries(assigned)){
   const s=plan.layout.seats.find(x=>x.id===seat),p=studentsById[id];if(!s||!p)continue;
