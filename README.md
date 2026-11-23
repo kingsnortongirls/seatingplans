@@ -4,12 +4,16 @@ A fully client-side seating plan and teaching toolkit designed for static hostin
 
 ## Start-up and class setup wizard
 
-Every **fresh page load** now starts with a prominent choice between **Restore my backup** and **Set up my classes**. The site never remembers whether it was visited before and does not automatically retain pupil data.
+Every **fresh page load** offers **Restore my backup** or **Set up my classes**. The site does not remember visits or automatically retain pupil records.
 
-1. **Restore my backup:** select a previously downloaded encrypted `.seatingplan` file and enter its original password. A successful restore opens the workspace with your existing classes and records. It does not prompt you to reimport anything.
-2. **Set up my classes:** import an Edulink CSV, review pupil matches and confirm the changes. The wizard then shows the classes imported and offers **Import next class** or **I'm finished · Create backup**. Continue for as many classes as required. If a CSV contains multiple classes, all correctly mapped groups appear in the list.
-3. **I'm finished:** the tool opens the Backup & restore page and immediately presents the encrypted backup password form. Creating a backup **does not prove it has been saved successfully**, so select **Verify downloaded backup** afterwards and test that the file matches the current session.
-4. **Continue without the wizard / Exit guided setup:** staff can access all features without being forced into importing a file. The normal dashboard also has a **Guided setup** action to return later.
+1. **Restore my backup:** choose a downloaded encrypted `.seatingplan` file and enter its original password to continue. A successful restore bypasses new-class setup.
+2. **Import classes:** start the wizard, choose an Edulink CSV and confirm the pupil-matching review. Multiple teaching groups from one CSV are supported.
+3. **Import year-group OPPs:** immediately after confirmation, the wizard advances to a dedicated One Page Profile step and **automatically scrolls to it**. The on-screen path is **Staffshare → Inclusion → Inclusion Matters → One Page Profiles**. Select either a **year-group ZIP** of Word profiles or **multiple .docx documents**, or drag them onto the upload area. The imported file names and OPP contents are not transmitted or persisted by the website. The parser attempts exact pupil-name matches; ambiguous or unmatched profiles require manual confirmation.
+4. **Next class or finish:** after the OPPs are processed, choose **Import next class**, **Import more OPPs** or **I'm finished · Create backup**. Repeat the process for each year group. You can **Skip OPP import for now** without losing the classes already imported. Profiles can be added later.
+5. **Back up:** when you finish, the app opens the encrypted backup password form immediately. After downloading, choose **Verify downloaded backup** to check the file can be decrypted and that it matches the current session. A download alone cannot guarantee a working backup.
+6. **Exit guided setup:** use the standard dashboard without following the wizard. The dashboard also allows the wizard to be reopened.
+
+Staffshare is a folder-location instruction, **not an automatic network connection**. The teacher must select the files using their school's file picker or drag and drop. The wizard identifies year groups from common class names such as `7X/CS` and `9A/CS`, but imports OPPs against actual pupil identities rather than guessing from the folder name.
 
 There is no persistent onboarding state, server account, login, browser storage or automatic backup. Cancelling an import or backup does **not** delete current work. Closing or refreshing the browser without a verified, safely stored encrypted backup risks permanent loss of current-session changes.
 
