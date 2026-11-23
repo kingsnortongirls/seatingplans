@@ -125,7 +125,7 @@ function classOverview(){
  ];
  const quality='<div class="grid three">'+stat(qc.duplicates.length,'Duplicates','Review identity')+stat(qc.missingTarget.length,'Missing targets','Source check')+stat(qc.emptySelected.length,'Missing COTTA','Source check')+'</div><div class="list-scroll" style="max-height:280px">'+
  issues.filter(x=>x[1].length).map(x=>'<p><strong>'+esc(x[0])+':</strong> '+esc(x[1].slice(0,30).join(', '))+(x[1].length>30?' and '+(x[1].length-30)+' more':'')+'</p>').join('')+
- (!issues.some(x=>x[1].length)?'<p>No missing mapped assessment or target fields detected.</p>':'')+'</div>';
+ (!issues.some(x=>x[1].length)?'<p>No missing mapped assessment or target fields detected.</p>':'')+(cls.importWarnings||[]).map(w=>'<p class="alert"><strong>Import warning:</strong> '+esc(w)+'</p>').join('')+'</div>';
  return heading('Class overview','Class attainment, confidential teacher records and data-quality checks.',
  button('Assessment history','go-assessments','btn')+button('Year rollover','year-rollover','btn')+button('Export overview','export-class-summary','btn'))+
  '<div class="board-tools"><label>Class'+classChoices()+'</label></div>'+
