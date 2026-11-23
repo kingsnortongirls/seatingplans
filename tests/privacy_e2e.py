@@ -24,7 +24,7 @@ def synthetic_csv():
     w.writerow(['Learner','Class','Student ID','SEN Status','Pupil Premium Indicator','Y7 CS AT','Y7 CS COTTA'])
     w.writerow(['Pupil Alpha','8X/CS','ID1','K','Yes','7','5'])
     w.writerow(['Pupil Beta','8X/CS','ID2','N','No','5','5'])
-    w.writerow(['Pupil Gamma','8X/CS','ID3','N','No','6','6'])
+    w.writerow(['Pupil Gamma','8X/CS','ID3','','','6','6'])
     return buf.getvalue().encode('utf-8')
 
 async def main():
@@ -66,6 +66,20 @@ async def main():
             assert await page.locator('.seat .seat-tag.tag-send').count()>=1
             assert await page.locator('.seat .seat-tag.tag-pp').count()>=1
             assert await page.locator('.seat-number').count()==0
+            # Record a late arrival and verify that class/teacher reports separate
+            # lateness from behaviour without treating blank SEND/PP as an error.
+            await page.locator('#nav [data-view=records]').click()
+            await page.get_by_role('button',name='+ Late arrival').click()
+            await page.locator('#modalForm input[name=date]').fill('2026-11-23')
+            await page.locator('#modalForm input[name=lesson]').fill('Period 2')
+            await page.locator('#modalForm input[name=minutesLate]').fill('6')
+            await page.locator('#modalForm button[type=submit]').click()
+            assert await page.get_by_text('Lateness trends').count()==1
+            assert await page.locator('table').get_by_text('Late to lesson').count()>=1
+            await page.locator('#nav [data-view=overview]').click()
+            assert await page.locator('th').get_by_text('Late',exact=True).count()==1
+            assert await page.get_by_text('Missing SEND field').count()==0
+            assert await page.get_by_text('Missing PP field').count()==0
             # Original-workbook parity: manual assessment history and teacher progress.
             await page.locator('#nav [data-view=assessments]').click()
             await page.get_by_role('button',name='+ Save assessment').click()
