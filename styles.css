@@ -91,3 +91,30 @@
  .canvas .seat.homework-missing::after{display:none}
  .canvas .seat.homework-missing{border-color:#aaa!important;background:#fff!important}
 }
+
+/* Teacher-only assessment band. A narrow underline preserves the room's
+   accessible/avoid seat background, which communicates a different concept. */
+.canvas .seat.grade-below-two{--grade-strip:#c33737}
+.canvas .seat.grade-below-one{--grade-strip:#e9a23b}
+.canvas .seat.grade-on-target{--grade-strip:#2c9d58}
+.canvas .seat.grade-above-one{--grade-strip:#2d87c4}
+.canvas .seat.grade-above-two{--grade-strip:#6855b5}
+.canvas .seat[class*="grade-"]::before{
+ content:"";position:absolute;bottom:0;left:0;right:0;height:5px;
+ background:var(--grade-strip);border-radius:0 0 3px 3px;
+ pointer-events:none;
+}
+.grade-summary{border:1px solid #ccd5e3;border-left:7px solid var(--grade-strip);padding:12px;border-radius:8px;margin-bottom:15px}
+.grade-summary.grade-below-two{--grade-strip:#c33737}
+.grade-summary.grade-below-one{--grade-strip:#e9a23b}
+.grade-summary.grade-on-target{--grade-strip:#2c9d58}
+.grade-summary.grade-above-one{--grade-strip:#2d87c4}
+.grade-summary.grade-above-two{--grade-strip:#6855b5}
+.grade-key{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;color:var(--sub);font-size:11px}
+.grade-key span{display:inline-flex;align-items:center;gap:4px}
+.grade-key i{width:11px;height:6px;display:inline-block;background:var(--swatch);border-radius:2px}
+.canvas .seat.picked-pupil{outline:4px solid #bc75e3;outline-offset:2px}
+@media print{
+ .print-pupil .canvas .seat[class*="grade-"]::before{display:none!important}
+ .print-pupil .canvas .seat.picked-pupil{outline:0!important}
+}
