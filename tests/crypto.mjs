@@ -6,4 +6,10 @@ const encrypted=await encryptBackup(sample,'correct horse battery stable');
 assert(!encrypted.includes('Pupil A'));
 assert.deepEqual(validateBackup(await decryptBackup(encrypted,'correct horse battery stable')),sample);
 await assert.rejects(()=>decryptBackup(encrypted,'incorrect password'));
-console.log('Encrypted backup round trip: PASS');
+// An eight-character password is valid. Seven is not.
+const shortValid=await encryptBackup(sample,'12345678');
+assert.deepEqual(validateBackup(await decryptBackup(shortValid,'12345678')),sample);
+await assert.rejects(()=>encryptBackup(sample,'1234567'),/at least 8 characters/);
+// Existing longer-password backups still decrypt without restrictions.
+assert.deepEqual(validateBackup(await decryptBackup(encrypted,'correct horse battery stable')),sample);
+console.log('Encrypted backup round trip and eight-character minimum: PASS');
