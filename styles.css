@@ -8,3 +8,31 @@
 .metric{background:white;border:1px solid var(--line);border-radius:14px;padding:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:6px;min-width:0;margin-bottom:8px}.metric strong{font-size:30px;letter-spacing:-.8px}.metric small{font-size:12px;font-weight:800}.metric span{color:var(--sub);font-size:11px}.check{display:flex;gap:8px;align-items:center;line-height:1.5;margin:10px 0;font-weight:500}.check input{width:auto;min-height:auto}.icon-button{border:1px solid var(--line);border-radius:7px;background:white;padding:4px 7px;color:var(--accent)}.seat small{line-height:1.1;overflow-wrap:anywhere}.canvas .seat{cursor:pointer}.canvas[data-mode=rooms] .seat,.canvas[data-mode=rooms] .teacher-desk{cursor:grab}
 
 .pupil-chip small{display:block;font-size:10px;margin-top:4px;color:var(--sub)}
+
+/* IT3: 34 seats around a central double-sided island. All geometry stays
+   in the locally held room preset and remains editable by staff. */
+.canvas.it3 .seat{width:8.2%;height:9.0%;min-height:27px;z-index:3}
+.canvas.it3 .seat strong{font-size:clamp(7px,.69vw,10px)}
+.canvas.it3 .seat small{font-size:8px}
+.canvas.it3 .it3-island{
+ position:absolute;z-index:0;left:21.5%;top:43%;width:59%;height:19%;
+ background:#bad0ec;border:2px solid #8baddd;border-radius:7px;
+ box-shadow:inset 0 0 0 1px #d4e3f3;
+}
+.canvas.it3 .it3-island::after{
+ content:'';position:absolute;inset:0;
+ background:linear-gradient(90deg,transparent 49.8%,#95b5df 50%,transparent 50.2%);
+}
+.canvas.it3 .teacher-desk{z-index:4;max-width:12%;min-height:25px}
+@media(max-width:740px){
+ .canvas.it3{min-height:430px}
+ .canvas.it3 .seat{width:8.6%;height:8.5%;min-height:27px;padding:1px}
+ .canvas.it3 .seat strong{font-size:7px}
+ .canvas.it3 .seat small{display:none}
+ .canvas.it3 .teacher-desk{font-size:6px}
+}
+@media print{
+ .canvas.it3 .seat{min-height:0;height:9.0%;width:8.2%}
+ .canvas.it3 .seat strong{font-size:9px}
+ .canvas.it3 .it3-island{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
