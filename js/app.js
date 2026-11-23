@@ -55,6 +55,54 @@ function rooms(){const r=currentRoom(),origin=r.preset||r.kind||(r.name==='Stand
  return heading('Room designer','Choose a room, then edit its desks directly. New rooms start from a layout preset.',button('+ New room','new-room','btn btn-primary')+button('Duplicate room','duplicate-room','btn')+button('Rename room','rename-room','btn'))+
  `<div class="board-tools no-print"><label>Select room${choose('roomId',data.rooms.map(x=>({value:x.id,label:x.name})),roomId,'data-action="select-room"')}</label>${button('Reset room','reset-room','btn btn-small',origin?'':'disabled title="This older room has no recorded starting preset"')}${button('Delete room','delete-room','btn btn-small btn-danger')}</div><div class="layout-split"><section class="card stage-card"><h2>Edit room: ${esc(r.name)}</h2>${seatMarkup(r,{}, {mode:'rooms'})}<div class="legend-line" style="margin-top:12px"><span>Drag a seat or teacher desk to move it.</span><span>Click any seat to edit its label, group or accessibility priority.</span></div><div class="button-row" style="margin-top:14px">${button('+ Add desk','add-seat','btn btn-primary')}${button('Use for class','room-to-plan','btn')}</div></section><aside class="card"><h2>Seat editor</h2>${selectedSeat&&r.seats.some(s=>s.id===selectedSeat)?roomSeatControls(r):'<p class="muted">Select a desk to edit its position, group and accessibility priority.</p>'}<hr class="divider"><p class="tiny muted">Reset room restores its original preset, not another classroom. Existing seating plan versions remain unchanged. You can undo a reset.</p><hr class="divider"><p class="tiny muted">Easy access seats are reachable without navigating crowded spaces. Mark these manually. SEND labels alone never trigger seat assignments.</p><h3>Keyboard shortcuts</h3><p class="tiny muted">Ctrl+Z: undo<br>Ctrl+Y or Ctrl+Shift+Z: redo</p></aside></div>`;}
 function roomSeatControls(r){const s=r.seats.find(s=>s.id===selectedSeat);return `<form id="roomSeatForm"><label>Seat label<input name="label" value="${esc(s.label)}" maxlength="12" required></label><label>Position priority${choose('priority',['normal','access','preferred','avoid'].map((v,i)=>({value:v,label:['Standard','Easy teacher access','Preferred seat','Avoid if possible'][i]})),s.priority)}</label><label>Table group<input name="group" value="${esc(s.group||'')}" maxlength="30"></label><div class="field-grid"><label>X (%)<input type="number" min="5" max="95" name="x" value="${Number(s.x)}"></label><label>Y (%)<input type="number" min="15" max="93" name="y" value="${Number(s.y)}"></label></div><label>Rotation${choose('rotation',[0,90,180,270].map(v=>({value:String(v),label:v+'°'})),String(s.rotation||0))}</label><div class="button-row"><button class="btn btn-primary" type="submit">Update seat</button>${button('Remove seat','remove-seat','btn btn-danger')}</div></form>`;}
+
+function progressChart(id){
+ const hist=assessmentHistory(data.assessments,id).map(a=>({...a,value:gradeValue(a.grade),targetValue:gradeValue(a.target)})).filter(a=>a.value);
+ if(!hist.length)return '<p class="muted">No saved assessment results yet.</p>';
+ const max=Math.max(9,...hist.map(a=>a.value.rank))+1;
+ let points=hist.map((a,i)=>({a,x:35+(hist.length===1?.5:i/(hist.length-1))*570,y:175-a.value.rank/max*145}));
+ let svg='<svg class="progress-svg" role="img" aria-label="Dated assessment results" viewBox="0 0 640 215"><line x1="35" y1="175" x2="605" y2="175" stroke="#becbda"/>';
+ svg+='<polyline fill="none" stroke="#2563ad" stroke-width="3" points="'+points.map(p=>p.x+','+p.y).join(' ')+'"/>';
+ for(const p of points){
+  svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="5" fill="#2563ad"><title>'+esc(p.a.name+' · '+p.a.grade+' · '+fmtDate(p.a.date))+'</title></circle>';
+  if(p.a.targetValue&&p.a.targetValue.scheme===p.a.value.scheme)svg+='<circle cx="'+p.x+'" cy="'+(175-p.a.targetValue.rank/max*145)+'" r="4" fill="#db8b2e"><title>Target: '+esc(p.a.target)+'</title></circle>';
+ }
+ svg+='</svg><p class="tiny muted">Blue: result. Orange: target, where comparable. Dates appear in chronological order.</p>';
+ return svg;
+}
+function assessmentsView(){
+ const cls=currentClass(),list=currentStudents(),pupil=student(selectedStudent)?.classId===classId?student(selectedStudent):list[0];
+ const hist=pupil?assessmentHistory(data.assessments,pupil.id):[];
+ if(!cls)return heading('Assessment history','Teacher-entered results and imported COTTA grades.')+card(empty('No class','Import an Edulink marksheet.'));
+ const cols=cls.assessmentHeaders||[];
+ const select=cols.length?'<div class="board-tools"><label>Displayed Edulink COTTA'+choose('assessmentColumn',cols.map(x=>({value:x,label:x})),cls.selectedAssessment||cols[0],'data-action="choose-assessment-column"')+'</label></div>':'<div class="notice">No selectable COTTA columns were detected in this import.</div>';
+ const people=choose('assessmentPupil',list.map(x=>({value:x.id,label:x.name})),pupil?.id||'','data-action="select-assessment-pupil"');
+ const rows=hist.slice().reverse().map(a=>'<tr><td>'+esc(fmtDate(a.date))+'</td><td>'+esc(a.name)+'</td><td>'+esc(a.grade)+'</td><td>'+esc(a.target)+'</td><td>'+(assessmentGap(a.grade,a.target)??'Not comparable')+'</td><td>'+button('Edit','edit-assessment','btn btn-small','data-id="'+esc(a.id)+'"')+'</td></tr>').join('');
+ return heading('Assessment history','Choose COTTA data, enter assessments and review dated pupil progress.',button('+ Save assessment','new-assessment','btn btn-primary'))+
+ '<div class="board-tools"><label>Class'+classChoices()+'</label><label>Pupil'+people+'</label></div>'+select+
+ card(pupil?'<h3>'+esc(pupil.name)+' · Current '+esc(pupil.current||'Not supplied')+' · Target '+esc(pupil.target||'Not supplied')+'</h3>'+progressChart(pupil.id):'Select a pupil','Pupil progress')+
+ card(hist.length?'<div class="table-wrap"><table><thead><tr><th>Date</th><th>Assessment</th><th>Grade</th><th>Target</th><th>Gap</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p>No assessments saved for this pupil yet.</p>','Assessment history');
+}
+function assessmentModal(id=''){
+ const old=data.assessments.find(a=>a.id===id),list=currentStudents(),chosen=student(selectedStudent)?.classId===classId?selectedStudent:list[0]?.id;
+ if(!list.length){notice('Import a class first.','error');return;}
+ const who=old?.studentId||chosen;
+ const content='<label>Pupil'+choose('studentId',list.map(s=>({value:s.id,label:s.name})),who)+'</label>'+
+ '<label>Assessment name<input name="name" maxlength="140" required value="'+esc(old?.name||'')+'" placeholder="e.g. SLR 4–5 test"></label>'+
+ '<label>Date<input type="date" name="date" required value="'+esc(old?.date||isoDate())+'"></label>'+
+ '<div class="field-grid"><label>Grade<input name="grade" required maxlength="8" value="'+esc(old?.grade||'')+'"></label><label>Target<input name="target" maxlength="8" value="'+esc(old?.target||student(who)?.target||'')+'"></label></div>'+
+ '<label>Notes<textarea name="notes" rows="3" maxlength="1500">'+esc(old?.notes||'')+'</textarea></label>'+
+ (old?'<label class="check"><input type="checkbox" name="delete"> Delete this assessment</label>':'');
+ openModal(old?'Edit saved assessment':'Save assessment',content,fd=>{
+  const sid=String(fd.get('studentId')),name=clean(fd.get('name')),grade=clean(fd.get('grade')),date=String(fd.get('date'));
+  if(!list.some(s=>s.id===sid)||!name||!grade||!/^\\d{4}-\\d{2}-\\d{2}$/.test(date))throw new Error('Complete a valid pupil, name, grade and date.');
+  mutation(()=>{
+   if(old&&fd.has('delete'))data.assessments=data.assessments.filter(a=>a.id!==id);
+   else{const entry=old||{id:uid()};Object.assign(entry,{studentId:sid,classId,date,name,grade,target:clean(fd.get('target')),notes:clean(fd.get('notes'))});if(!old)data.assessments.push(entry);}
+  });
+  selectedStudent=sid;
+ },old?'Save changes':'Save assessment');
+}
 function profiles(){const list=currentStudents().filter(s=>s.name.toLowerCase().includes(searchTerm.toLowerCase()));return heading('Pupil profiles','Teacher-only information from Edulink and locally imported One Page Profiles.',button('↑ Import OPPs','import-opp','btn btn-primary')+(data.pendingOPPs?.length?button('Review '+data.pendingOPPs.length+' OPP match(es)','review-opps','btn'):''))+ (!data.classes.length?card(empty('No pupils yet','Import your Edulink CSV from the dashboard.')):`<div class="board-tools"><label>Class${classChoices()}</label><label>Search pupils<input id="pupilSearch" placeholder="Search name" value="${esc(searchTerm)}"></label></div><div class="grid two">${card(`<div class="list-scroll profile-list">${list.map(s=>`<button type="button" class="pupil-chip ${selectedStudent===s.id?'selected':''}" data-action="select-profile" data-id="${esc(s.id)}"><strong>${esc(s.name)}</strong><span class="pill ${s.opp?'green':'grey'}">${s.opp?'OPP':'No OPP'}</span></button>`).join('')||empty('No results','Try a different name.')}</div>`,'Class pupils')}${card(selectedStudent&&student(selectedStudent)?.classId===classId?profileDetails(student(selectedStudent)):empty('Select a pupil','Open their Edulink information, OPP guidance, attainment and teacher records.'),'Pupil information')}</div>`);}
 function profileDetails(s){let opp=s.opp||{};let head=`<div class="profile-head">${opp.photo&&/^data:image\/(png|jpeg|webp);base64,/.test(opp.photo)?`<img class="avatar" src="${opp.photo}" alt="Pupil photograph">`:'<div class="avatar">♙</div>'}<div><h2>${esc(s.name)}</h2><div class="tag-list">${s.send?badge('SEND '+s.send):''}${s.pp?badge('PP '+s.pp):''}${s.prior?badge('PA '+s.prior):''}${s.eal?badge('EAL '+s.eal):''}</div></div></div><div class="tabbar">${['support','attainment','history'].map(t=>`<button class="tab ${profileTab===t?'active':''}" data-action="profile-tab" data-tab="${t}">${{support:'OPP / strategies',attainment:'Attainment',history:'Records'}[t]}</button>`).join('')}</div>`;
  if(profileTab==='attainment')return head+(gradeGap(s)?`<div class="grade-summary grade-${gradeGap(s).band}"><strong>${esc(gradeGap(s).label)}</strong> · Current ${esc(s.current)} / Target ${esc(s.target)}</div>`:'')+`<div class="grid two">${[['Target',s.target],['Current',s.current],['Reading age',s.readingAge],['Reading SS',s.readingSS],['Spelling age',s.spellingAge],['Spelling SS',s.spellingSS],['KS2 Reading',s.ks2Reading],['KS2 Maths',s.ks2Maths]].map(([t,v])=>`<div class="notice"><small>${esc(t)}</small><strong style="display:block;font-size:17px;margin-top:4px">${esc(v||'Not supplied')}</strong></div>`).join('')}</div><p class="tiny muted">Assessment grades are shown as supplied by Edulink; no numeric grade gap is invented for missing or non-numeric grades.</p>`;
