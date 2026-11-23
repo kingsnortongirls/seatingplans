@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Static school seating planner. All pupil data stays in browser memory.",
   "scripts": {
-    "test": "node tests/features.mjs && node tests/crypto.mjs",
+    "test": "node tests/features.mjs && node tests/crypto.mjs && node tests/pdf.mjs",
     "test:browser": "python tests/privacy_e2e.py",
     "test:smoke": "python tests/smoke.py"
   }
