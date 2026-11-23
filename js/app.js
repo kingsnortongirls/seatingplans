@@ -110,13 +110,7 @@ function action(id,attrs={}){try{switch(id){
  case 'rename-plan':{const p=currentPlan();if(!p)break;openModal('Rename version',field('name','Version name',p.name),fd=>mutation(()=>p.name=clean(fd.get('name'))));break;}
  case 'delete-plan':{const p=currentPlan();if(!p||!confirm(`Delete version "${p.name}"? This can be undone.`))break;mutation(()=>{data.plans=data.plans.filter(x=>x.id!==p.id);planId='';});break;}
  case 'compare-plans':compareVersions();break;
- case 'auto-seat':{const p=currentPlan();if(!p)break;const people=currentStudents();const proposal=autoSeat(p,people),audit=auditRules(p,people,proposal.assignments);
-  const apply=()=>{mutation(()=>{p.assignments=proposal.assignments;});if(audit.advisory.length||proposal.access.unmet.length)notice('Plan applied with preferences to review. See the notices below.','error');else notice('Seating plan generated; required rules satisfied.','success');};
-  if(audit.required.length){
-   const list=audit.required.map(x=>`<li><strong>${esc(x.names.join(' and '))}:</strong> ${esc(x.description)} (${esc(x.status)})</li>`).join('');
-   openModal('Required seating rules not met',`<div class="alert"><strong>${audit.required.length} required rule(s) could not be met.</strong><p>Existing seating has not changed. You can cancel, amend the room or rules, or deliberately accept this proposal.</p><ul>${list}</ul></div>${proposal.access.unmet.length?`<p>${proposal.access.unmet.length} SEND/PP preference(s) also cannot be accommodated.</p>`:''}`,()=>{apply();},'Apply despite conflicts');
-  }else apply();
-  break;}
+ case 'auto-seat':generateSeatsModal();break;
  case 'clear-seats':{const p=currentPlan();if(p&&confirm('Unseat all pupils in this version? You can undo this change.'))mutation(()=>{p.assignments={};p.locks=[];});break;}
  case 'toggle-lock':{const p=currentPlan();if(p&&selectedSeat)mutation(()=>{p.locks=p.locks.includes(selectedSeat)?p.locks.filter(x=>x!==selectedSeat):[...p.locks,selectedSeat];});break;}
  case 'unseat':{const p=currentPlan();if(p&&selectedSeat)mutation(()=>{delete p.assignments[selectedSeat];p.locks=p.locks.filter(x=>x!==selectedSeat);});break;}
@@ -240,6 +234,42 @@ function oppSeatingPromptsModal(){
  $('#modalRoot').querySelectorAll('[data-opp-hint]').forEach(el=>el.addEventListener('click',()=>{
   reviewOppSeatingHint(el.dataset.oppPupil,Number(el.dataset.oppHint));
  }));
+}
+function generateSeatsModal(){
+ const p=currentPlan();if(!p)return;
+ const options={keepApart:true,keepLocked:true,mixed:false,front:true,...(p.generationOptions||{}),send:!!p.accessPreference?.send,pp:!!p.accessPreference?.pp};
+ const check=(name,label,explanation)=>`<label class="check"><input type="checkbox" name="${name}" ${options[name]?'checked':''}><span><strong>${esc(label)}</strong><small style="display:block;color:var(--sub);font-weight:400">${esc(explanation)}</small></span></label>`;
+ const content=`<p class="muted tiny">Configure the local generator for this plan version. A preview will show rule conflicts, accessible-seat shortages and pupils not accommodated before you apply changes.</p>
+ ${check('send','Prioritise SEND pupils for accessible seats','Teacher-selected preference; pupils in both SEND and PP are counted once')}
+ ${check('pp','Prioritise PP pupils for accessible seats','Teacher-selected preference, not an assumed individual requirement')}
+ ${check('keepApart','Respect specified pupil separation rules','Existing separation restrictions remain in the saved rule list')}
+ ${check('keepLocked','Preserve locked seats','Turning this off may move locked pupils and unlock their seats if applied')}
+ ${check('mixed','Balance prior attainment','Aim to distribute high and low prior attainment across table groups')}
+ ${check('front','Apply front-row rules for selected pupils','Only pupils with teacher-defined front-seat rules are affected')}
+ `;
+ openModal('Configure seating generation',content,fd=>{
+  const settings=Object.fromEntries(['send','pp','keepApart','keepLocked','mixed','front'].map(key=>[key,fd.has(key)]));
+  const pupils=currentStudents(),proposal=autoSeat(p,pupils,settings);
+  const audit=auditRules(p,pupils,proposal.assignments),report=proposal.access;
+  const conflicts=[...audit.required,...audit.advisory];
+  const lines=conflicts.map(r=>`<li><strong>${esc(r.names.join(' and '))}:</strong> ${esc(r.description)} (${r.required?'required':'preference'})</li>`).join('');
+  const missing=report.enabled&&report.unmet.length?`<p><strong>${report.unmet.length} eligible pupil(s) are outside accessible seats:</strong> ${report.unmet.map(s=>esc(s.name)).join(', ')}.</p>`:'';
+  const preview=`<div class="${audit.required.length?'alert':'notice'}"><strong>${audit.required.length} required conflicts; ${audit.advisory.length} advisory preferences unmet; ${audit.met.length} rules satisfied.</strong><p>${pupils.length} pupils will be assigned to ${p.layout.seats.length} seats.</p></div>
+   ${conflicts.length?`<h3>Rules to review</h3><div class="list-scroll" style="max-height:230px"><ul>${lines}</ul></div>`:'<p>All assessed rules can be satisfied by this proposal.</p>'}
+   ${audit.pending.length?`<p class="muted tiny">${audit.pending.length} rule(s) are pending because one or more pupils are unseated.</p>`:''}
+   ${report.enabled?`<div class="notice"><strong>Accessible seating:</strong> ${report.eligible} eligible, ${report.capacity} seats, ${report.assigned} assigned in accessible positions.${report.shortfall?`<p>At least ${report.shortfall} cannot fit with these constraints.</p>`:''}${missing}</div>`:''}
+   ${!settings.keepLocked&&p.locks.length?`<div class="alert">You have opted to unlock ${p.locks.length} fixed seat(s) when applying this plan.</div>`:''}
+   <p class="muted tiny">Your current plan is untouched until you click Apply. Any changes can be undone afterwards. The generator runs entirely on this device.</p>`;
+  queueMicrotask(()=>openModal('Review proposed seating plan',preview,()=>{
+   mutation(()=>{
+    p.generationOptions={keepApart:settings.keepApart,keepLocked:settings.keepLocked,mixed:settings.mixed,front:settings.front};
+    p.accessPreference={send:settings.send,pp:settings.pp};
+    p.assignments=proposal.assignments;
+    if(!settings.keepLocked)p.locks=[];
+   });
+   notice(audit.required.length?'Plan applied with confirmed required conflicts. Review the rule warnings.':report.unmet.length?'Plan applied. Review accessible-seat shortfalls.':'Seating plan applied; rules checked.',audit.required.length||report.unmet.length?'error':'success');
+  },audit.required.length?'Apply despite conflicts':'Apply seating plan'));
+ },'Preview seating plan');
 }
 function groupAccessPreferenceModal(){
  const p=currentPlan();if(!p)return;
