@@ -178,6 +178,18 @@ export function buildPreset(kind,name) {
   [30,40,50,60,70,80,90].forEach(y=>add(92,y,'IT3-Right'));
   [26,36,46,56,66,76].forEach(x=>add(x,40,'IT3-Island-North'));
   [26,36,46,56,66,76].forEach(x=>add(x,65,'IT3-Island-South'));
+  // Default accessibility priorities follow the approved IT3 layout:
+  // accessible seat 13 on the left, seat 20 on the right, and
+  // all six places on the lower edge of the central island.
+  // Back corner seats 15 and 22 are marked avoid-if-possible.
+  // These are classroom-position priorities, never pupil attributes.
+  const easyAccess=new Set([13,20,29,30,31,32,33,34]);
+  const avoid=new Set([15,22]);
+  for(const seat of seats){
+   const number=Number(seat.label);
+   if(easyAccess.has(number))seat.priority='access';
+   else if(avoid.has(number))seat.priority='avoid';
+  }
   return {id:uid(),name:name||'IT3',kind:'it3',preset:'it3',seats,teacher:{x:76,y:90},board:'back'};
  }
  if(kind==='it2'){
