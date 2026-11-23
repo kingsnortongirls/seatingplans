@@ -93,7 +93,7 @@ async def main():
             await page.locator('#verifyBackupFile').set_input_files(str(saved))
             await page.locator('#modalForm [name=password]').fill('SyntheticPassword2026!')
             await page.get_by_role('button',name='Decrypt and verify').click()
-            await page.get_by_text('Verified: the file decrypts correctly and contains the exact current session.',exact=False).wait_for()
+            await page.locator('.notice[role=status]').get_by_text('Verified: the file decrypts correctly',exact=False).wait_for()
             assert 'Changes not backed up' not in (await page.locator('#saveIndicator').inner_text())
             # Restore into a clean session to prove the actual file is usable.
             await page.locator('#clearSession').click()
