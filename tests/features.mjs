@@ -49,6 +49,32 @@ const proposal=buildEdulinkReview([klass],[{id:'x',classId:'class',name:'Changed
 assert.equal(proposal.items[0].suggestedId,'x');
 assert.equal(proposal.items[1].status,'new');
 assert.equal(oppSeatingHints({adjustments:['Sit close to the teacher','Give worked examples']}).length,1);
+
+const teachingOnly=oppSeatingHints({adaptations:[
+ 'Accessible reading materials: age-appropriate text, visuals and desk copies of board work.',
+ 'Chunking: step by step instructions and task boards.',
+ 'Adapted questioning strategies, positive reinforcement and praise.'
+]});
+assert.equal(teachingOnly.length,0,'General teaching guidance must not be offered as seating rules');
+const frontSeating=oppSeatingHints({adaptations:[
+ 'Preferential seating at the front of the classroom and opportunities for movement during lessons.',
+ 'Seat at front. Give gentle reminders to stay focused.'
+]});
+assert.equal(frontSeating.length,1,'Repeated front preferences must be grouped');
+assert.equal(frontSeating[0].mode,'front');
+assert.equal(frontSeating[0].evidence.length,2);
+const ownDesk=oppSeatingHints({about:['If possible, seat me on my own.']});
+assert.equal(ownDesk[0].mode,'solo');
+assert.equal(ownDesk[0].text,'If possible, seat me on my own');
+const nearTeacher=oppSeatingHints({adjustments:['Please seat me close to the teacher.']});
+assert.equal(nearTeacher[0].mode,'teacher');
+const manualWindow=oppSeatingHints({adjustments:['Seat away from the window.']});
+assert.ok(manualWindow[0].reviewOnly,'Unmapped physical locations need a manual review');
+for(const negative of [
+ 'Do not sit at the front of the classroom.',
+ 'Prefer not to sit at the front of the classroom.'
+])assert.equal(oppSeatingHints({about:[negative]}).length,0,'Negated guidance must not become an affirmative rule');
+
 const room=buildPreset('it3','IT3');
 assert.equal(room.seats.length,34);
 assert.equal(room.seats.filter(s=>s.priority==='access').length,8);
@@ -69,6 +95,18 @@ assert.equal(suggested.access.capacity,8);
 assert.equal(suggested.access.eligible,10);
 assert.equal(suggested.access.unmet.length,2);
 plan.rules=[{id:'apart',type:'apart',a:'p1',b:'p2',mode:'distance',distance:100,strict:true}];
+
+const soloAndTeacherPlan=newPlan('class',room,'Review');
+soloAndTeacherPlan.rules=[
+ {id:'front-rule',type:'priority',a:'p0',mode:'front',strict:false},
+ {id:'teacher-rule',type:'priority',a:'p1',mode:'teacher',strict:false},
+ {id:'solo-rule',type:'priority',a:'p2',mode:'solo',strict:false}
+];
+const considered=autoSeat(soloAndTeacherPlan,students,{send:false,pp:false,mixed:false});
+const consideredAudit=auditRules(soloAndTeacherPlan,students,considered.assignments);
+assert.equal(consideredAudit.checks.length,3);
+assert.ok(consideredAudit.checks.every(r=>r.status==='met'),'Explicit OPP suggestions should affect generated seating');
+
 const withConflict=autoSeat(plan,students,{keepApart:false,send:false,pp:false});
 assert.equal(auditRules(plan,students,withConflict.assignments).required.length,1);
 console.log('Synthetic workbook parity, import, attendance, grades and seating engine: PASS');
