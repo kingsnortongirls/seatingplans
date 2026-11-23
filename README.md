@@ -18,7 +18,7 @@ A fully client-side seating plan and teaching toolkit designed for static hostin
 
 - Import or refresh Edulink marksheets with pupil name, class, reg group, SEND, PP, EAL, prior attainment, reading/spelling ages, target and current grades.
 - Bulk OPP import from individual `.docx` or `.zip` files with Word text-box extraction, photo extraction and exact pupil-name matching; ambiguous matches are shown for review.
-- Standard 2-4-2 room (four rows, 32 seats), **IT3 (34 seats: 8 top, 7 left, 7 right and 12 on the central island in two rows of 6)**, pairs, group tables and U-shape, plus custom drag-and-drop editing, teacher desk and per-seat accessibility priority.
+- Standard 2-4-2 room (four rows, 32 seats), **IT3 (34 seats: 8 top, 7 left, 7 right and 12 on the central island in two rows of 6)**, **IT2 (33 seats: 8 left, 7 right, 10 central, 4 upper and 4 lower)**, pairs, group tables and U-shape, plus custom drag-and-drop editing, teacher desk and per-seat accessibility priority.
 - Manual placement, swaps and locking; automatically suggested seating according to separation, preferred pairing and accessible seating rules. Conflicts are reported rather than silently ignored.
 - Named seating plan versions, duplication, comparison and undo/redo.
 - Missing homework, lateness, behaviour entries, dated notes, pupil support and attainment views.
@@ -28,6 +28,10 @@ A fully client-side seating plan and teaching toolkit designed for static hostin
 ## IT3 preset
 
 The **IT3** room is available immediately in the Room Designer, including a central island and teacher desk at the front. Choose **IT3 · 34 seats** in the layout preset menu for another room. Staff can still move individual seats or edit accessibility priorities. Preset geometry, custom room edits and seating assignments are included in encrypted local backups. The photograph and pupil names from the reference screenshot are **not** committed or included in the application.
+
+## IT2 preset
+
+The **IT2** classroom is also available immediately in Room Designer as a 33-seat preset, including all 8 usually unoccupied positions: four on the upper desks, two at the lower-left table, one on the left bank and one in the central block. The whiteboard is along the lower wall to follow the screenshot layout, with the movable teacher desk beside it. Empty positions remain real, assignable seats, not permanently blocked chairs. No names or photographs from the reference screenshot are included.
 
 ## Install on GitHub Pages
 
