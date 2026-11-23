@@ -124,11 +124,24 @@ export function classQuality(students,classes,classId){
  for(const s of rows){const key=nameKey(s.name);if(seen.has(key))duplicates.push(s.name);seen.add(key);}
  const choices=cls?.assessmentHeaders||[];
  const selected=cls?.selectedAssessment||'';
- const incomplete=rows.filter(s=>!s.name||!s.target||!(selected?s.gradeColumns?.[selected]:s.current)).map(s=>s.name);
- const emptySelected=selected?rows.filter(s=>!clean(s.gradeColumns?.[selected])).map(s=>s.name):[];
+ // Older, valid backups may have a current grade but no gradeColumns map.
+ // Only prefer an explicitly present selected column over the legacy grade.
+ const displayedGrade=s=>selected&&Object.prototype.hasOwnProperty.call(s.gradeColumns||{},selected)
+  ? clean(s.gradeColumns[selected]):clean(s.current);
+ const incomplete=rows.filter(s=>!s.name||!clean(s.target)||!displayedGrade(s)).map(s=>s.name);
+ const emptySelected=selected?rows.filter(s=>!displayedGrade(s)).map(s=>s.name):[];
+ // A blank SEND or PP value normally means no indicator, not a faulty import.
+ // Missing source *headings* are reported by the CSV importer separately.
  return {total:rows.length,duplicates,incomplete,emptySelected,missingTarget:rows.filter(s=>!clean(s.target)).map(s=>s.name),
-  missingSEND:rows.filter(s=>!clean(s.send)).map(s=>s.name),missingPP:rows.filter(s=>!clean(s.pp)).map(s=>s.name),
   assessmentHeaders:choices,selectedAssessment:selected};
+}
+// Historical behaviour incidents labelled "Late to lesson" remain part of
+// the lateness totals even before a dedicated late-record type existed.
+export function isLateRecord(record){
+ return record?.type==='late'||(record?.type==='behaviour'&&/^(late to lesson|late arrival|lateness)$/i.test(clean(record.category)));
+}
+export function isBehaviourRecord(record){
+ return record?.type==='behaviour'&&!isLateRecord(record);
 }
 // Read ZIP central-directory records. DOCX is a ZIP file. Deflate uses the browser's native
 // DecompressionStream (no external parser, CDN, service, or data transfer).
