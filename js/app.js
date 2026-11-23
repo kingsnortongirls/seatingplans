@@ -582,25 +582,73 @@ function planNotesModal(){
  openModal('Seating plan notes',`<p class="muted tiny">Record why this arrangement was chosen, what worked and what to review next time. Notes are private to this plan version and are included only in encrypted exports.</p><label>Teacher notes<textarea rows="7" name="notes" maxlength="4000" placeholder="Seating rationale, changes to review, classroom observations...">${esc(p.notes||'')}</textarea></label>`,
   fd=>mutation(()=>{p.notes=clean(fd.get('notes')).slice(0,4000);}), 'Save notes');
 }
-function reviewOppSeatingHint(pupilId,hintIndex){
+function reviewOppSeatingHint(pupilId,mode){
  const p=currentPlan(),s=student(pupilId);
- const hint=s&&oppSeatingHints(s.opp)[hintIndex];
+ const hint=s&&oppSeatingHints(s.opp).find(h=>h.mode===mode);
  if(!p||!s||s.classId!==classId||!hint)return;
- openModal('Confirm a pupil-specific seating rule',`<div class="notice"><strong>${esc(s.name)} · Original OPP wording</strong><p>${esc(hint.text)}</p></div><p class="muted tiny">Please interpret the individual guidance yourself. The application will not automatically decide whether the pupil needs a front, accessible or preferred seat.</p><label>Teacher-confirmed rule${choose('mode',[{value:'front',label:'Prefer front (nearest whiteboard)'},{value:'access',label:'Easy teacher access (green seats)'},{value:'preferred',label:'Preferred or accessible seats'}])}</label><label class="check"><input name="strict" type="checkbox"> Make this mandatory rather than a preference</label>`,fd=>{
-  const mode=fd.get('mode');
-  if(!['front','access','preferred'].includes(mode))throw new Error('Choose a valid seating rule.');
-  mutation(()=>{p.rules.push({id:uid(),type:'priority',a:s.id,b:'',mode,strict:fd.has('strict'),source:'Teacher-confirmed OPP',guidance:hint.text});});
-  notice('Teacher-confirmed seating rule added. You can inspect it in Seating rules.','success');
- },'Add confirmed rule');
+ if(hint.reviewOnly){showStudent(s.id);return;}
+ const existing=(p.rules||[]).some(r=>r.type==='priority'&&r.a===s.id&&r.mode===hint.mode);
+ const choices=[
+  {value:'front',label:'Sit towards the front (nearest whiteboard)'},
+  {value:'teacher',label:'Sit near the teacher desk'},
+  {value:'solo',label:'Sit independently (no immediately adjacent pupil)'},
+  {value:'access',label:'Easy-access seating (green seats)'},
+  {value:'preferred',label:'Preferred / accessible seat'}
+ ];
+ const evidence=hint.evidence.map(t=>'<li>'+esc(t)+'</li>').join('');
+ openModal('Confirm OPP seating preference',
+  '<div class="notice"><strong>'+esc(s.name)+' · '+esc(hint.label)+'</strong><ul>'+evidence+'</ul></div>'+
+  '<p class="muted tiny">The suggested rule is based on the exact wording above. Check the full OPP and room layout before applying it. All new rules are advisory unless you explicitly mark them mandatory.</p>'+
+  (existing?'<div class="notice">This suggested rule is already present in this seating plan version. Adding it again is not necessary.</div>':'')+
+  '<label>Teacher-confirmed rule'+choose('mode',choices,hint.mode)+'</label>'+
+  '<label class="check"><input name="strict" type="checkbox"> Make mandatory instead of a preference</label>',
+  fd=>{
+   const chosen=String(fd.get('mode'));
+   if(!choices.some(x=>x.value===chosen))throw new Error('Choose a supported seating rule.');
+   if(p.rules.some(r=>r.type==='priority'&&r.a===s.id&&r.mode===chosen))throw new Error('This seating rule is already in this plan.');
+   mutation(()=>p.rules.push({id:uid(),type:'priority',a:s.id,b:'',mode:chosen,strict:fd.has('strict'),source:'Teacher-confirmed OPP',guidance:hint.evidence.join(' · ')}));
+   notice('OPP seating preference added to this plan. Generate seats to apply it.','success');
+  },'Add confirmed rule');
 }
 function oppSeatingPromptsModal(){
  const p=currentPlan();if(!p)return;
- const entries=currentStudents().flatMap(s=>oppSeatingHints(s.opp).map((hint,index)=>({s,hint,index})));
- const rows=entries.map(({s,hint,index})=>`<div class="list-card" style="align-items:flex-start;gap:10px"><div style="flex:1"><strong>${esc(s.name)}</strong><small>${esc(hint.text)}</small></div><button type="button" class="btn btn-small" data-opp-hint="${index}" data-opp-pupil="${esc(s.id)}">Review rule</button></div>`).join('');
- openModal('Review OPP seating guidance',`<p class="muted tiny">These are exact excerpts from locally imported OPPs. They may include phrases that are not actual seating requirements. Review the full profile and confirm any rule yourself.</p><div class="list-scroll" style="max-height:430px">${rows||'<p class="muted">No likely seating guidance found in the imported OPPs for this class.</p>'}</div>`,()=>{},'Close');
- $('#modalRoot').querySelectorAll('[data-opp-hint]').forEach(el=>el.addEventListener('click',()=>{
-  reviewOppSeatingHint(el.dataset.oppPupil,Number(el.dataset.oppHint));
+ const groups=currentStudents().map(s=>({s,hints:oppSeatingHints(s.opp)})).filter(item=>item.hints.length);
+ const supported=groups.flatMap(g=>g.hints.filter(h=>!h.reviewOnly).map(h=>({s:g.s,h})));
+ const pending=supported.filter(({s,h})=>!p.rules.some(r=>r.type==='priority'&&r.a===s.id&&r.mode===h.mode));
+ const rows=groups.map(({s,hints})=>{
+  const items=hints.map(h=>{
+   const already=p.rules.some(r=>r.type==='priority'&&r.a===s.id&&r.mode===h.mode);
+   const excerpt=h.evidence.map(t=>'<div class="opp-evidence">'+esc(t)+'</div>').join('');
+   if(h.reviewOnly)return '<div class="opp-suggestion"><div class="opp-suggestion-main"><strong>'+esc(h.label)+'</strong>'+excerpt+
+    '<small class="muted">This cannot be mapped reliably to a room position. Review the pupil profile instead.</small></div>'+
+    '<button type="button" class="btn btn-small" data-opp-profile="'+esc(s.id)+'">View profile</button></div>';
+   return '<div class="opp-suggestion"><label class="opp-suggestion-main"><span class="opp-preference-title"><input type="checkbox" name="opp_'+esc(s.id)+'_'+esc(h.mode)+'" '+(already?'disabled':'')+'>'+
+    '<strong>'+esc(h.label)+'</strong>'+(already?'<small class="pill green">Already added</small>':'')+'</span>'+excerpt+'</label>'+
+    '<button type="button" class="btn btn-small" data-opp-pupil="'+esc(s.id)+'" data-opp-mode="'+esc(h.mode)+'">Review</button></div>';
+  }).join('');
+  return '<section class="opp-pupil-group"><h3>'+esc(s.name)+'</h3>'+items+'</section>';
+ }).join('');
+ const summary='<div class="notice"><strong>'+supported.length+' seating preference(s)</strong> detected across '+groups.length+' pupil(s); '+
+  pending.length+' not yet added to this seating plan. General OPP teaching strategies are excluded.</div>';
+ const body='<p class="muted tiny">Only explicit seating wording is proposed. Tick recommendations you agree with, or select Review to inspect an individual rule. The original wording is shown for checking. These changes apply to this plan version only and remain editable.</p>'+
+  summary+'<div class="list-scroll opp-review-list" style="max-height:420px">'+
+  (rows||'<p class="muted">No explicit seating preferences found in the imported OPPs for this class.</p>')+
+  '</div><p class="muted tiny">Bulk-added rules are <strong>advisory</strong> by default. Use Review to make an individual rule mandatory. No seating changes occur until you generate/apply a new plan.</p>';
+ openModal('Review OPP seating guidance',body,fd=>{
+  const selected=pending.filter(({s,h})=>fd.has('opp_'+s.id+'_'+h.mode));
+  if(!selected.length)throw new Error('Select one or more new seating preferences, or press Cancel.');
+  mutation(()=>{
+   for(const {s,h} of selected){
+    if(!p.rules.some(r=>r.type==='priority'&&r.a===s.id&&r.mode===h.mode))
+     p.rules.push({id:uid(),type:'priority',a:s.id,b:'',mode:h.mode,strict:false,source:'Teacher-confirmed OPP',guidance:h.evidence.join(' · ')});
+   }
+  });
+  notice(selected.length+' teacher-approved OPP preferences added. Generate seats to use them.','success');
+ },'Add selected preferences');
+ $('#modalRoot').querySelectorAll('[data-opp-pupil][data-opp-mode]').forEach(button=>button.addEventListener('click',()=>{
+  reviewOppSeatingHint(button.dataset.oppPupil,button.dataset.oppMode);
  }));
+ $('#modalRoot').querySelectorAll('[data-opp-profile]').forEach(button=>button.addEventListener('click',()=>showStudent(button.dataset.oppProfile)));
 }
 function generateSeatsModal(){
  const p=currentPlan();if(!p)return;
@@ -651,7 +699,7 @@ function groupAccessPreferenceModal(){
   if(next.enabled&&next.shortfall)notice(`Accessible seat shortfall: ${next.eligible} eligible pupils for ${next.capacity} accessible seats. At least ${next.shortfall} cannot be accommodated.`,'error');
  },'Save preferences');
 }
-function rulesModal(){const p=currentPlan();if(!p)return;const rows=(p.rules||[]).map((r,i)=>`<div class="list-card"><div><strong>${esc({apart:'Keep apart',together:'Prefer together',priority:'Priority seat'}[r.type])}</strong><small>${esc(student(r.a)?.name||'Unknown')}${r.b?' / '+esc(student(r.b)?.name||'Unknown'):''} · ${esc(r.mode||'')}</small></div><button type="button" class="btn btn-small" data-remove-rule="${i}">Remove</button></div>`).join('');const candidates=currentStudents().map(s=>({value:s.id,label:s.name}));openModal('Seating rules',`<p class="muted tiny">Mandatory separation rules and required seat priorities are checked by the generator. Preferred pairings are advisory.</p><div class="list-scroll" id="rulesList">${rows||'<p class="muted tiny">No rules added.</p>'}</div><hr class="divider"><label>Rule type${choose('type',[{value:'apart',label:'Keep two pupils apart'},{value:'together',label:'Prefer together'},{value:'priority',label:'Pupil seating priority'}])}</label><div class="field-grid"><label>Pupil${choose('a',candidates,selectedStudent)}</label><label>Other pupil (pair rules)${choose('b',[{value:'',label:'None'},...candidates])}</label></div><label>Seat rule${choose('mode',[{value:'distance',label:'Keep apart: minimum distance'},{value:'group',label:'Keep apart: different table groups'},{value:'front',label:'Prefer front rows'},{value:'access',label:'Easy teacher access'},{value:'preferred',label:'Preferred accessible seats'}])}</label><label>Minimum distance (if selected)<input type="number" name="distance" min="10" max="90" value="20"></label><label class="check"><input type="checkbox" name="strict" checked> Required priority (rather than preference)</label>`,fd=>{const type=fd.get('type'),a=fd.get('a'),b=fd.get('b'),mode=fd.get('mode');if(type!=='priority'&&(!b||a===b))throw new Error('Choose two different pupils for pair rules.');if(type==='priority'&&!['front','access','preferred'].includes(mode))throw new Error('Select a front, easy access or preferred seat option.');if(type==='apart'&&!['distance','group'].includes(mode))throw new Error('Select minimum distance or different table groups.');mutation(()=>{p.rules.push({id:uid(),type,a,b:type==='priority'?'':b,mode: type==='together'?'near':mode,distance:Number(fd.get('distance'))||20,strict:fd.has('strict')});});},'Add rule');$('#rulesList').addEventListener('click',e=>{const b=e.target.closest('[data-remove-rule]');if(!b)return;const i=Number(b.dataset.removeRule);mutation(()=>p.rules.splice(i,1));closeModal();rulesModal();});}
+function rulesModal(){const p=currentPlan();if(!p)return;const rows=(p.rules||[]).map((r,i)=>`<div class="list-card"><div><strong>${esc({apart:'Keep apart',together:'Prefer together',priority:'Priority seat'}[r.type])}</strong><small>${esc(student(r.a)?.name||'Unknown')}${r.b?' / '+esc(student(r.b)?.name||'Unknown'):''} · ${esc(r.mode||'')}</small></div><button type="button" class="btn btn-small" data-remove-rule="${i}">Remove</button></div>`).join('');const candidates=currentStudents().map(s=>({value:s.id,label:s.name}));openModal('Seating rules',`<p class="muted tiny">Mandatory separation rules and required seat priorities are checked by the generator. Preferred pairings are advisory.</p><div class="list-scroll" id="rulesList">${rows||'<p class="muted tiny">No rules added.</p>'}</div><hr class="divider"><label>Rule type${choose('type',[{value:'apart',label:'Keep two pupils apart'},{value:'together',label:'Prefer together'},{value:'priority',label:'Pupil seating priority'}])}</label><div class="field-grid"><label>Pupil${choose('a',candidates,selectedStudent)}</label><label>Other pupil (pair rules)${choose('b',[{value:'',label:'None'},...candidates])}</label></div><label>Seat rule${choose('mode',[{value:'distance',label:'Keep apart: minimum distance'},{value:'group',label:'Keep apart: different table groups'},{value:'front',label:'Prefer front rows'},{value:'teacher',label:'Near the teacher desk'},{value:'solo',label:'Seat independently'},{value:'access',label:'Easy teacher access'},{value:'preferred',label:'Preferred accessible seats'}])}</label><label>Minimum distance (if selected)<input type="number" name="distance" min="10" max="90" value="20"></label><label class="check"><input type="checkbox" name="strict" checked> Required priority (rather than preference)</label>`,fd=>{const type=fd.get('type'),a=fd.get('a'),b=fd.get('b'),mode=fd.get('mode');if(type!=='priority'&&(!b||a===b))throw new Error('Choose two different pupils for pair rules.');if(type==='priority'&&!['front','teacher','solo','access','preferred'].includes(mode))throw new Error('Select a front, near-teacher, independent or accessible seat option.');if(type==='apart'&&!['distance','group'].includes(mode))throw new Error('Select minimum distance or different table groups.');mutation(()=>{p.rules.push({id:uid(),type,a,b:type==='priority'?'':b,mode: type==='together'?'near':mode,distance:Number(fd.get('distance'))||20,strict:fd.has('strict')});});},'Add rule');$('#rulesList').addEventListener('click',e=>{const b=e.target.closest('[data-remove-rule]');if(!b)return;const i=Number(b.dataset.removeRule);mutation(()=>p.rules.splice(i,1));closeModal();rulesModal();});}
 
 function categoriesModal(){
  const categories=(data.categories||[]).filter(x=>!/^late to lesson$/i.test(x));
