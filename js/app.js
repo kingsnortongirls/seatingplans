@@ -59,36 +59,69 @@ function welcome(){
    ${button('Continue without the wizard','wizard-skip','btn')}
   </div>`;
 }
-function setup(){
- const count=data.classes.length;
- const names=data.classes.slice().sort((a,b)=>a.name.localeCompare(b.name,'en-GB'));
- const added=setupPhase==='next'&&!!setupLastImport;
- return heading(added?'Class import complete':'Set up your teaching groups',
-  added?'Ready to import another class, or finish and create an encrypted backup.':'Import the first class using your Edulink marksheet. You can review all pupil matches before saving.')+
- `<div class="onboarding-step"><span class="onboarding-step-label">GUIDED SETUP</span><strong>${count} teaching group${count===1?'':'s'} in this session</strong></div>
- ${added?`<div class="notice onboarding-success"><strong>✓ Marksheet reviewed</strong><p>${esc(setupLastImport)}</p></div>`:''}
- <div class="onboarding-grid onboarding-grid-next">
-  <section class="onboarding-card">
-   <span class="onboarding-symbol" aria-hidden="true">＋</span>
-   <h2>${count?'Add your next class':'Import your first class'}</h2>
-   <p>Choose an Edulink CSV file. You'll review new pupils, existing matches and any import warnings before anything is changed.</p>
-   ${button(count?'Import next class':'Choose Edulink CSV','wizard-import-next','btn btn-primary onboarding-main-action')}
-   <p class="muted tiny">One CSV can contain more than one teaching group. Those groups will appear in the list below.</p>
-  </section>
-  <section class="onboarding-card onboarding-finish">
-   <span class="onboarding-symbol" aria-hidden="true">✓</span>
-   <h2>I'm finished adding classes</h2>
-   <p>Proceed to the encrypted backup step so you can reopen this workspace next time. The saved file must be verified before leaving the browser.</p>
-   ${button("I'm finished · Create backup",'wizard-finish','btn btn-primary onboarding-main-action')}
-   <p class="muted tiny">You can continue editing or import additional OPPs after saving. Create a new backup after further changes.</p>
-  </section>
- </div>
- ${card(names.length?names.map(cls=>`<div class="list-card"><div><strong>${esc(cls.name)}</strong><small>${data.students.filter(s=>s.classId===cls.id&&s.active!==false).length} pupil(s)</small></div></div>`).join(''):'<p class="muted">No class imported yet.</p>','Classes imported in this session')}
- <div class="onboarding-footer">
-  <p>Optional: ${button('Import pupil OPPs','import-opp','btn btn-small')} You can also do this later. All files are processed locally.</p>
-  ${button('Exit guided setup','wizard-exit','btn')}
- </div>`;
+
+function yearGroupFromClass(name){
+ const match=/^\s*(?:year\s*|y\s*)?(7|8|9|10|11|12|13)(?!\d)/i.exec(name||'');
+ return match?'Year '+match[1]:'';
 }
+function wizardScrollToStep(id){
+ const section=document.getElementById?.(id);
+ if(!section)return;
+ const reduced=window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+ section.scrollIntoView?.({behavior:reduced?'auto':'smooth',block:'start'});
+ section.focus?.({preventScroll:true});
+}
+function setup(){
+ const names=data.classes.slice().sort((a,b)=>a.name.localeCompare(b.name,'en-GB'));
+ const count=names.length,isOpp=setupPhase==='opp',isNext=setupPhase==='next';
+ const headingText=isOpp?'Next: import year-group OPPs':isNext?'Ready for your next class?':'Set up your teaching groups';
+ const subtitle=isOpp?'Add the One Page Profiles for the year group(s) you have imported.':
+ isNext?'Your OPPs have been processed. Add another class or finish with an encrypted backup.':
+ 'Choose an Edulink marksheet. You will review pupil matches before importing support profiles.';
+ const classes=card(names.length?names.map(cls=>`<div class="list-card"><div><strong>${esc(cls.name)}</strong><small>${data.students.filter(p=>p.classId===cls.id&&p.active!==false).length} pupil(s)</small></div></div>`).join(''):'<p class="muted">No classes imported yet.</p>','Classes in this session');
+ const years=setupYearGroups.length?setupYearGroups.join(', '):'your imported year group(s)';
+ const oppStep=`<section id="setup-opp-step" class="onboarding-opp-step" tabindex="-1" aria-labelledby="setup-opp-heading">
+ <span class="onboarding-step-label">STEP 2 · ONE PAGE PROFILES</span>
+ <h2 id="setup-opp-heading">Import OPPs for ${esc(years)}</h2>
+ <p>Find your year-group profiles in:</p>
+ <div class="onboarding-folder-path" role="note"><strong>Staffshare</strong><span>›</span><strong>Inclusion</strong><span>›</span><strong>Inclusion Matters</strong><span>›</span><strong>One Page Profiles</strong></div>
+ <div class="onboarding-file-types">
+ <div><strong>Option A · ZIP file</strong><small>Select a ZIP containing the year group's Word profiles.</small></div>
+ <div><strong>Option B · Multiple Word files</strong><small>Select multiple .docx files from the folder together.</small></div></div>
+ <div class="onboarding-file-drop" data-opp-drop="true">
+ <span class="onboarding-symbol" aria-hidden="true">▤</span>
+ <p>Drag a ZIP or a collection of Word profiles here, or browse your files.</p>
+ ${button('Choose ZIP or Word OPP files','wizard-import-opp','btn btn-primary onboarding-main-action')}
+ <small>Files are processed only in this browser. Pupil names are matched carefully; ambiguous matches need confirmation.</small>
+ </div>
+ <div class="onboarding-opp-actions">${button('Skip OPP import for now','wizard-skip-opp','btn')}</div>
+ </section>`;
+ const next=`<div class="onboarding-grid onboarding-grid-next" id="setup-next-step">
+ <section class="onboarding-card"><span class="onboarding-symbol" aria-hidden="true">＋</span>
+ <h2>Add your next class</h2><p>Import another Edulink CSV, then add the OPPs for that year group.</p>
+ ${button('Import next class','wizard-import-next','btn btn-primary onboarding-main-action')}
+ ${button('Import more OPPs','wizard-more-opp','btn')}</section>
+ <section class="onboarding-card onboarding-finish"><span class="onboarding-symbol" aria-hidden="true">✓</span>
+ <h2>I'm finished adding classes</h2><p>Create an encrypted backup now, then verify the downloaded file.</p>
+ ${button("I'm finished · Create backup",'wizard-finish','btn btn-primary onboarding-main-action')}</section></div>`;
+ const first=`<div class="onboarding-grid onboarding-grid-next">
+ <section class="onboarding-card"><span class="onboarding-symbol" aria-hidden="true">＋</span>
+ <h2>${count?'Import another class':'Import your first class'}</h2>
+ <p>Select an Edulink CSV and review all pupil matches before confirming.</p>
+ ${button(count?'Import next class':'Choose Edulink CSV','wizard-import-next','btn btn-primary onboarding-main-action')}</section>
+ <section class="onboarding-card"><span class="onboarding-symbol" aria-hidden="true">▤</span>
+ <h2>Next: One Page Profiles</h2>
+ <p>After confirming your marksheet, this page scrolls to the year-group OPP upload step.</p></section></div>`;
+ return heading(headingText,subtitle)+
+ `<div class="onboarding-step"><span class="onboarding-step-label">GUIDED SETUP · ${isOpp?'OPP IMPORT':isNext?'NEXT CLASS OR BACKUP':'CLASS IMPORT'}</span>
+ <strong>${count} teaching group${count===1?'':'s'} in this session</strong></div>
+ ${setupLastImport?`<div class="notice onboarding-success"><strong>✓ Edulink import reviewed</strong><p>${esc(setupLastImport)}</p></div>`:''}
+ ${isNext&&setupLastOppImport?`<div class="notice onboarding-success" role="status"><strong>OPP import</strong><p>${esc(setupLastOppImport)}</p>
+ ${data.pendingOPPs.length?`<p><strong>${data.pendingOPPs.length} unmatched OPP(s) need reviewing.</strong> ${button('Review unmatched OPPs','review-opps','btn btn-small')}</p>`:''}</div>`:''}
+ ${isOpp?classes+oppStep:isNext?next+classes:first+classes}
+ <div class="onboarding-footer"><p>Information stays in temporary browser memory. Download and verify an encrypted backup when finished.</p>${button('Exit guided setup','wizard-exit','btn')}</div>`;
+}
+
 function dashboard(){const pupils=currentStudents();return heading('Welcome to Seating Plans','An offline-in-the-browser teacher workspace. Student information is never transmitted.',button('↑ Import Edulink CSV','import-csv','btn btn-primary')+button('Guided setup','wizard-start','btn')+button('↑ Import OPPs','import-opp','btn')+(data.pendingOPPs?.length?button('Review OPP matches ('+data.pendingOPPs.length+')','review-opps','btn'):''))+ 
  `<div class="callout privacy"><strong>Private session.</strong> Files are processed in this browser only. There is no account, server database, analytics or automatic saving. Export an encrypted backup before closing or refreshing this page.</div>`+
  `<div class="grid four">${stat(data.classes.length,'Classes','Imported from Edulink')}${stat(data.students.length,'Pupils','Session memory only')}${stat(data.rooms.length,'Room layouts','Fully editable')}${stat(data.plans.length,'Plan versions','Included in backups')}</div>`+
