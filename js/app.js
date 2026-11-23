@@ -57,7 +57,9 @@ function rooms(){const r=currentRoom(),origin=r.preset||r.kind||(r.name==='Stand
 function roomSeatControls(r){const s=r.seats.find(s=>s.id===selectedSeat);return `<form id="roomSeatForm"><label>Seat label<input name="label" value="${esc(s.label)}" maxlength="12" required></label><label>Position priority${choose('priority',['normal','access','preferred','avoid'].map((v,i)=>({value:v,label:['Standard','Easy teacher access','Preferred seat','Avoid if possible'][i]})),s.priority)}</label><label>Table group<input name="group" value="${esc(s.group||'')}" maxlength="30"></label><div class="field-grid"><label>X (%)<input type="number" min="5" max="95" name="x" value="${Number(s.x)}"></label><label>Y (%)<input type="number" min="15" max="93" name="y" value="${Number(s.y)}"></label></div><label>Rotation${choose('rotation',[0,90,180,270].map(v=>({value:String(v),label:v+'°'})),String(s.rotation||0))}</label><div class="button-row"><button class="btn btn-primary" type="submit">Update seat</button>${button('Remove seat','remove-seat','btn btn-danger')}</div></form>`;}
 
 function progressChart(id){
- const hist=assessmentHistory(data.assessments,id).map(a=>({...a,value:gradeValue(a.grade),targetValue:gradeValue(a.target)})).filter(a=>a.value);
+ const all=assessmentHistory(data.assessments,id).map(a=>({...a,value:gradeValue(a.grade),targetValue:gradeValue(a.target)})).filter(a=>a.value);
+ const scheme=all.at(-1)?.value.scheme;
+ const hist=all.filter(a=>a.value.scheme===scheme);
  if(!hist.length)return '<p class="muted">No saved assessment results yet.</p>';
  const max=Math.max(9,...hist.map(a=>a.value.rank))+1;
  let points=hist.map((a,i)=>({a,x:35+(hist.length===1?.5:i/(hist.length-1))*570,y:175-a.value.rank/max*145}));
@@ -67,7 +69,7 @@ function progressChart(id){
   svg+='<circle cx="'+p.x+'" cy="'+p.y+'" r="5" fill="#2563ad"><title>'+esc(p.a.name+' · '+p.a.grade+' · '+fmtDate(p.a.date))+'</title></circle>';
   if(p.a.targetValue&&p.a.targetValue.scheme===p.a.value.scheme)svg+='<circle cx="'+p.x+'" cy="'+(175-p.a.targetValue.rank/max*145)+'" r="4" fill="#db8b2e"><title>Target: '+esc(p.a.target)+'</title></circle>';
  }
- svg+='</svg><p class="tiny muted">Blue: result. Orange: target, where comparable. Dates appear in chronological order.</p>';
+ svg+='</svg><p class="tiny muted">Blue: result. Orange: target, where comparable. Dates appear in chronological order; only the latest comparable grading scale is plotted.</p>';
  return svg;
 }
 function assessmentsView(){
