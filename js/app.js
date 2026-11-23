@@ -2,7 +2,7 @@ import {uid,clone,clean,esc,short,nameKey,isoDate,readEdulink,buildEdulinkReview
 
 // Everything below exists in memory only. No localStorage, cookies, IndexedDB, API calls or telemetry.
 const initial=()=>({schema:1,classes:[],students:[],rooms:[defaultRoom(),buildPreset('it3','IT3'),buildPreset('it2','IT2')],plans:[],records:[],assessments:[],questioned:{},questioningLog:[],yearRollovers:[],pendingOPPs:[],categories:['Homework not submitted','Truancy','Lack of effort','Disrespect','Missing equipment','Disruption','Not following instructions','Incomplete classwork','Other']});
-let data=initial(),view='welcome',setupActive=false,setupPhase='import',setupLastImport='',classId='',roomId=data.rooms[0].id,planId='',selectedStudent='',selectedSeat='',selectedRecord='',dirty=false,history=[],future=[],profileTab='support',searchTerm='',recordFilter='all',printMode='teacher',groupResult=[],lastPicked='',pickerExclude=true,absent=new Set(),layoutMode='move',pendingOPPs=[],oppSummary='',importSummary='',dragState=null,homeworkSession=null,projectorWindow=null,backupVerifyStatus='',hideIndicators=false,privacyLocked=false,lessonTimer={remaining:300,running:false,endsAt:0},lessonTimerHandle=null,lastPickerState='',pickerSpin=null,contextLongPress=null,suppressSeatClick=false,recordPeriod=30;
+let data=initial(),view='welcome',setupActive=false,setupPhase='import',setupLastImport='',setupLastOppImport='',setupYearGroups=[],classId='',roomId=data.rooms[0].id,planId='',selectedStudent='',selectedSeat='',selectedRecord='',dirty=false,history=[],future=[],profileTab='support',searchTerm='',recordFilter='all',printMode='teacher',groupResult=[],lastPicked='',pickerExclude=true,absent=new Set(),layoutMode='move',pendingOPPs=[],oppSummary='',importSummary='',dragState=null,homeworkSession=null,projectorWindow=null,backupVerifyStatus='',hideIndicators=false,privacyLocked=false,lessonTimer={remaining:300,running:false,endsAt:0},lessonTimerHandle=null,lastPickerState='',pickerSpin=null,contextLongPress=null,suppressSeatClick=false,recordPeriod=30;
 const $=sel=>document.querySelector(sel), $$=sel=>[...document.querySelectorAll(sel)];
 const currentClass=()=>data.classes.find(c=>c.id===classId);
 const currentRoom=()=>data.rooms.find(r=>r.id===roomId)||data.rooms[0];
@@ -541,10 +541,13 @@ function closeModal(){$('#modalRoot').replaceChildren();}
 const field=(name,title,value='',type='text')=>`<label>${esc(title)}<input type="${type}" name="${name}" value="${esc(value)}" ${type==='text'?'maxlength="140"':''} required></label>`;
 function showStudent(id){selectedStudent=id;profileTab='support';goto('profiles');}
 function action(id,attrs={}){try{switch(id){
- case 'wizard-start':setupActive=true;setupPhase=data.classes.length?'next':'import';setupLastImport='';goto('setup');break;
- case 'wizard-import-next':$('#csvFile').click();break;
- case 'wizard-skip':case 'wizard-exit':setupActive=false;setupPhase='import';goto('dashboard');break;
- case 'wizard-finish':setupActive=false;setupPhase='import';goto('backup');queueMicrotask(()=>backupModal());break;
+ case 'wizard-start':setupActive=true;setupPhase=data.classes.length?'next':'import';setupLastImport='';setupLastOppImport='';setupYearGroups=[];goto('setup');break;
+ case 'wizard-import-next':if(setupActive){setupPhase='import';setupLastOppImport='';setupLastImport='';render();}$('#csvFile').click();break;
+ case 'wizard-import-opp':$('#oppFiles').click();break;
+ case 'wizard-more-opp':setupPhase='opp';setupLastOppImport='';render();queueMicrotask(()=>wizardScrollToStep('setup-opp-step'));break;
+ case 'wizard-skip-opp':setupPhase='next';setupLastOppImport='OPP import skipped. You can add profiles later.';render();break;
+ case 'wizard-skip':case 'wizard-exit':setupActive=false;setupPhase='import';setupLastOppImport='';setupYearGroups=[];goto('dashboard');break;
+ case 'wizard-finish':setupActive=false;setupPhase='import';setupLastOppImport='';setupYearGroups=[];goto('backup');queueMicrotask(()=>backupModal());break;
  case 'import-csv':$('#csvFile').click();break;
  case 'import-opp':$('#oppFiles').click();break;case 'review-opps':reviewPendingOPPs();break;
  case 'go-rooms':goto('rooms');break;case 'go-backup':goto('backup');break;
@@ -610,7 +613,7 @@ function action(id,attrs={}){try{switch(id){
  case 'restore-backup':$('#backupFile').click();break;
  case 'verify-backup':$('#verifyBackupFile').click();break;
  case 'export-rooms':download(JSON.stringify({format:'SEATING-EMPTY-ROOMS',version:1,rooms:data.rooms},null,2),'room-layouts.json','application/json');notice('Room templates exported without student information.','success');break;
- case 'clear-session':{if(confirm('Clear all pupils, OPPs, notes, records and plans from memory? Export a backup first if needed.')){stopPickerSpin();homeworkSession=null;if(projectorWindow&&!projectorWindow.closed)projectorWindow.close();projectorWindow=null;data=initial();history=[];future=[];dirty=false;classId='';planId='';roomId=data.rooms[0].id;selectedStudent='';selectedSeat='';absent.clear();setupActive=false;setupPhase='import';setupLastImport='';goto('welcome');notice('Session cleared.','success');}break;}
+ case 'clear-session':{if(confirm('Clear all pupils, OPPs, notes, records and plans from memory? Export a backup first if needed.')){stopPickerSpin();homeworkSession=null;if(projectorWindow&&!projectorWindow.closed)projectorWindow.close();projectorWindow=null;data=initial();history=[];future=[];dirty=false;classId='';planId='';roomId=data.rooms[0].id;selectedStudent='';selectedSeat='';absent.clear();setupActive=false;setupPhase='import';setupLastImport='';setupLastOppImport='';setupYearGroups=[];goto('welcome');notice('Session cleared.','success');}break;}
  } }catch(e){console.error(e);notice(e.message,'error');}}
 function compareVersions(){const p=currentPlan(),others=data.plans.filter(x=>x.classId===classId&&x.id!==planId);if(!p||!others.length){notice('Create a second version to compare.');return;}openModal('Compare seating plan versions',`<p class="muted">Compare against the current version: <strong>${esc(p.name)}</strong>.</p><label>Other version${choose('other',others.map(x=>({value:x.id,label:x.name})))}</label>`,fd=>{const other=data.plans.find(x=>x.id===fd.get('other'));const reverse=x=>Object.fromEntries(Object.entries(x.assignments).map(([seat,id])=>[id,x.layout.seats.find(s=>s.id===seat)?.label||'Unknown seat']));const a=reverse(p),b=reverse(other);const moved=currentStudents().filter(s=>a[s.id]!==b[s.id]);queueMicrotask(()=>openModal('Version comparison',`<p>${esc(p.name)} compared with ${esc(other.name)}: <strong>${moved.length} pupils moved or unseated</strong>.</p><div class="list-scroll">${moved.map(s=>`<div class="list-card"><strong>${esc(s.name)}</strong><small>${esc(b[s.id]||'Unseated')} → ${esc(a[s.id]||'Unseated')}</small></div>`).join('')||'<p>No changes.</p>'}</div>`,()=>{} ,'Close'));});}
 function startHomeworkSession(){
@@ -938,7 +941,11 @@ function reviewEdulinkImport(incoming,diagnostics=[]){
   });
   importSummary=`Edulink reviewed: ${added} added, ${updated} refreshed, ${retired} marked inactive. Existing seating and records retained.`;
   notice(importSummary,'success');
-  if(setupActive){setupPhase='next';setupLastImport=importSummary;queueMicrotask(()=>goto('setup'));}
+  if(setupActive){
+   setupPhase='opp';setupLastImport=importSummary;setupLastOppImport='';
+   setupYearGroups=[...new Set(choices.filter(x=>x.decision!=='skip').map(x=>yearGroupFromClass(x.item.group)).filter(Boolean))];
+   queueMicrotask(()=>{goto('setup');wizardScrollToStep('setup-opp-step');});
+  }
  },'Confirm reviewed import');
 }
 async function importOPPs(files){
@@ -958,6 +965,10 @@ async function importOPPs(files){
  const suggestions=data.students.reduce((total,s)=>total+oppSeatingHints(s.opp).filter(h=>!h.reviewOnly).length,0);
  oppSummary=`Matched ${matched} OPP(s), ${unmatched} need teacher matching, ${errors.length} failed. ${suggestions} seating preference suggestion(s) available for teacher review.`;
  notice(oppSummary,errors.length?'error':'success');
+ if(setupActive&&setupPhase==='opp'&&(matched||unmatched)){
+  setupPhase='next';setupLastOppImport=oppSummary;
+  render();queueMicrotask(()=>wizardScrollToStep('setup-next-step'));
+ }
  if(unmatched||errors.length){
   openModal('OPP import review',`<p>${esc(oppSummary)}</p><p class="muted tiny">No uncertain OPP was attached to a pupil. Use <strong>Review OPP matches</strong> to link documents after checking their identities.</p><div class="list-scroll">${errors.map(x=>`<p class="alert">${esc(x)}</p>`).join('')}</div>`,()=>{},'Close');
  }
@@ -987,7 +998,7 @@ $('#backupFile').addEventListener('change',async e=>{
   openModal('Restore encrypted backup',`<p class="muted">Enter the password for this encrypted file. Restoring will replace the current session.</p><label>Backup password<input type="password" name="password" required autocomplete="off"></label><div class="alert">Export a new backup first if you need to preserve unbacked changes.</div>`,async fd=>{
    const restored=validateBackup(await decryptBackup(content,String(fd.get('password'))));
    if((dirty||data.students.length||data.assessments.length||data.records.length)&&!confirm('Replace the current session? Changes not backed up will be discarded.'))return;
-   stopPickerSpin();homeworkSession=null;if(projectorWindow&&!projectorWindow.closed)projectorWindow.close();projectorWindow=null;setupActive=false;setupPhase='import';setupLastImport='';view='dashboard';data=restored;history=[];future=[];dirty=false;classId=data.classes[0]?.id||'';roomId=data.rooms[0]?.id||'';planId=data.plans.find(p=>p.classId===classId)?.id||'';selectedStudent='';selectedSeat='';absent.clear();render();notice('Encrypted session restored locally.','success');
+   stopPickerSpin();homeworkSession=null;if(projectorWindow&&!projectorWindow.closed)projectorWindow.close();projectorWindow=null;setupActive=false;setupPhase='import';setupLastImport='';setupLastOppImport='';setupYearGroups=[];view='dashboard';data=restored;history=[];future=[];dirty=false;classId=data.classes[0]?.id||'';roomId=data.rooms[0]?.id||'';planId=data.plans.find(p=>p.classId===classId)?.id||'';selectedStudent='';selectedSeat='';absent.clear();render();notice('Encrypted session restored locally.','success');
   },'Decrypt and restore');
  }catch(err){notice(err.message,'error');}
 });
