@@ -18,12 +18,16 @@ A fully client-side seating plan and teaching toolkit designed for static hostin
 
 - Import or refresh Edulink marksheets with pupil name, class, reg group, SEND, PP, EAL, prior attainment, reading/spelling ages, target and current grades.
 - Bulk OPP import from individual `.docx` or `.zip` files with Word text-box extraction, photo extraction and exact pupil-name matching; ambiguous matches are shown for review.
-- Standard 2-4-2 room (four rows, 32 seats), pairs, group tables and U-shape, plus custom drag-and-drop editing, teacher desk and per-seat accessibility priority.
+- Standard 2-4-2 room (four rows, 32 seats), **IT3 (34 seats: 8 top, 7 left, 7 right and 12 on the central island in two rows of 6)**, pairs, group tables and U-shape, plus custom drag-and-drop editing, teacher desk and per-seat accessibility priority.
 - Manual placement, swaps and locking; automatically suggested seating according to separation, preferred pairing and accessible seating rules. Conflicts are reported rather than silently ignored.
 - Named seating plan versions, duplication, comparison and undo/redo.
 - Missing homework, lateness, behaviour entries, dated notes, pupil support and attainment views.
 - Random questioning without repetition, absence exclusion and grouping by attainment or position.
 - Print-friendly teacher and pupil plans; empty room template exports and encrypted complete workspace backups.
+
+## IT3 preset
+
+The **IT3** room is available immediately in the Room Designer, including a central island and teacher desk at the front. Choose **IT3 · 34 seats** in the layout preset menu for another room. Staff can still move individual seats or edit accessibility priorities. Preset geometry, custom room edits and seating assignments are included in encrypted local backups. The photograph and pupil names from the reference screenshot are **not** committed or included in the application.
 
 ## Install on GitHub Pages
 
