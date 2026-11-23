@@ -293,11 +293,15 @@ export function accessReport(plan,studentList,assignments=plan.assignments){
   assigned:eligible.length-unmet.length,unmet,lockedAccess:fixedAccess
  };
 }
-// Numeric GCSE grades only: non-numeric grades remain unclassified rather than guessed.
+// Compare like-for-like GCSE 9-1 or A-level A*-U grades only.
+// Mixed scales and unrecognised marks are deliberately left unclassified.
 export function gradeGap(student){
- const current=clean(student?.current),target=clean(student?.target);
- if(!/^[1-9]$/.test(current)||!/^[1-9]$/.test(target))return null;
- const gap=Number(current)-Number(target);
+ const current=clean(student?.current).toUpperCase(),target=clean(student?.target).toUpperCase();
+ const numeric=/^[1-9]$/.test(current)&&/^[1-9]$/.test(target);
+ const rank={'U':0,'E':1,'D':2,'C':3,'B':4,'A':5,'A*':6};
+ const alphabetic=Object.hasOwn(rank,current)&&Object.hasOwn(rank,target);
+ if(!numeric&&!alphabetic)return null;
+ const gap=numeric?Number(current)-Number(target):rank[current]-rank[target];
  return {gap,band:gap<=-2?'below-two':gap===-1?'below-one':gap===0?'on-target':gap===1?'above-one':'above-two',
   label:gap===0?'On target':gap<0?Math.abs(gap)+' grade(s) below target':gap+' grade(s) above target'};
 }
