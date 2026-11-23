@@ -103,6 +103,38 @@ function assessmentModal(id=''){
   selectedStudent=sid;
  },old?'Save changes':'Save assessment');
 }
+
+function classOverview(){
+ const cls=currentClass(),list=currentStudents();if(!cls)return heading('Class overview','Pupil monitoring and import quality.')+card(empty('No class','Import a class first.'));
+ const qc=classQuality(data.students,data.classes,classId),records=data.records.filter(x=>x.classId===classId);
+ const send=list.filter(s=>s.send&&!/^(n|no|none)$/i.test(s.send)).length;
+ const pp=list.filter(s=>/^(yes|y|true|1|pp)$/i.test(s.pp)).length;
+ const eal=list.filter(s=>/^(yes|y|true|1)$/i.test(s.eal)).length;
+ const below=list.filter(s=>gradeGap(s)?.gap<0).length;
+ const rows=list.map(s=>{
+  const behavior=records.filter(r=>r.studentId===s.id&&r.type==='behaviour').length;
+  const hw=records.filter(r=>r.studentId===s.id&&r.type==='homework'&&r.status==='Missing').length;
+  return '<tr><td>'+button(esc(s.name),'open-overview-pupil','btn btn-small','data-id="'+esc(s.id)+'"')+'</td><td>'+esc(s.current||'–')+'</td><td>'+esc(s.target||'–')+'</td><td>'+esc(gradeGap(s)?.label||'Not comparable')+'</td><td>'+hw+'</td><td>'+behavior+'</td></tr>';
+ }).join('');
+ const issues=[
+  ['Duplicate pupil names',qc.duplicates],
+  ['Missing target grades',qc.missingTarget],
+  ['Missing selected COTTA',qc.emptySelected],
+  ['Missing SEND field',qc.missingSEND],
+  ['Missing PP field',qc.missingPP]
+ ];
+ const quality='<div class="grid three">'+stat(qc.duplicates.length,'Duplicates','Review identity')+stat(qc.missingTarget.length,'Missing targets','Source check')+stat(qc.emptySelected.length,'Missing COTTA','Source check')+'</div><div class="list-scroll" style="max-height:280px">'+
+ issues.filter(x=>x[1].length).map(x=>'<p><strong>'+esc(x[0])+':</strong> '+esc(x[1].slice(0,30).join(', '))+(x[1].length>30?' and '+(x[1].length-30)+' more':'')+'</p>').join('')+
+ (!issues.some(x=>x[1].length)?'<p>No missing mapped assessment or target fields detected.</p>':'')+'</div>';
+ return heading('Class overview','Class attainment, confidential teacher records and data-quality checks.',
+ button('Assessment history','go-assessments','btn')+button('Year rollover','year-rollover','btn')+button('Export overview','export-class-summary','btn'))+
+ '<div class="board-tools"><label>Class'+classChoices()+'</label></div>'+
+ '<div class="grid four">'+stat(list.length,'Pupils','Active class register')+stat(send,'SEND','From Edulink')+stat(pp,'PP','From Edulink')+stat(eal,'EAL','From Edulink')+
+ stat(below,'Below target','Comparable COTTA')+stat(records.filter(r=>r.type==='homework'&&r.status==='Missing').length,'Missing homework','Open records')+
+ stat(records.filter(r=>r.type==='behaviour').length,'Behaviour incidents','All recorded')+stat(data.assessments.filter(a=>a.classId===classId).length,'Assessments','Saved results')+'</div>'+
+ card('<div class="table-wrap"><table><thead><tr><th>Pupil</th><th>Current</th><th>Target</th><th>Difference</th><th>Homework</th><th>Behaviour</th></tr></thead><tbody>'+rows+'</tbody></table></div>','Pupil class overview')+
+ card(quality,'Import data quality');
+}
 function profiles(){const list=currentStudents().filter(s=>s.name.toLowerCase().includes(searchTerm.toLowerCase()));return heading('Pupil profiles','Teacher-only information from Edulink and locally imported One Page Profiles.',button('↑ Import OPPs','import-opp','btn btn-primary')+(data.pendingOPPs?.length?button('Review '+data.pendingOPPs.length+' OPP match(es)','review-opps','btn'):''))+ (!data.classes.length?card(empty('No pupils yet','Import your Edulink CSV from the dashboard.')):`<div class="board-tools"><label>Class${classChoices()}</label><label>Search pupils<input id="pupilSearch" placeholder="Search name" value="${esc(searchTerm)}"></label></div><div class="grid two">${card(`<div class="list-scroll profile-list">${list.map(s=>`<button type="button" class="pupil-chip ${selectedStudent===s.id?'selected':''}" data-action="select-profile" data-id="${esc(s.id)}"><strong>${esc(s.name)}</strong><span class="pill ${s.opp?'green':'grey'}">${s.opp?'OPP':'No OPP'}</span></button>`).join('')||empty('No results','Try a different name.')}</div>`,'Class pupils')}${card(selectedStudent&&student(selectedStudent)?.classId===classId?profileDetails(student(selectedStudent)):empty('Select a pupil','Open their Edulink information, OPP guidance, attainment and teacher records.'),'Pupil information')}</div>`);}
 function profileDetails(s){let opp=s.opp||{};let head=`<div class="profile-head">${opp.photo&&/^data:image\/(png|jpeg|webp);base64,/.test(opp.photo)?`<img class="avatar" src="${opp.photo}" alt="Pupil photograph">`:'<div class="avatar">♙</div>'}<div><h2>${esc(s.name)}</h2><div class="tag-list">${s.send?badge('SEND '+s.send):''}${s.pp?badge('PP '+s.pp):''}${s.prior?badge('PA '+s.prior):''}${s.eal?badge('EAL '+s.eal):''}</div></div></div><div class="tabbar">${['support','attainment','history'].map(t=>`<button class="tab ${profileTab===t?'active':''}" data-action="profile-tab" data-tab="${t}">${{support:'OPP / strategies',attainment:'Attainment',history:'Records'}[t]}</button>`).join('')}</div>`;
  if(profileTab==='attainment')return head+(gradeGap(s)?`<div class="grade-summary grade-${gradeGap(s).band}"><strong>${esc(gradeGap(s).label)}</strong> · Current ${esc(s.current)} / Target ${esc(s.target)}</div>`:'')+`<div class="grid two">${[['Target',s.target],['Current',s.current],['Reading age',s.readingAge],['Reading SS',s.readingSS],['Spelling age',s.spellingAge],['Spelling SS',s.spellingSS],['KS2 Reading',s.ks2Reading],['KS2 Maths',s.ks2Maths]].map(([t,v])=>`<div class="notice"><small>${esc(t)}</small><strong style="display:block;font-size:17px;margin-top:4px">${esc(v||'Not supplied')}</strong></div>`).join('')}</div><p class="tiny muted">Assessment grades are shown as supplied by Edulink; no numeric grade gap is invented for missing or non-numeric grades.</p>`;
