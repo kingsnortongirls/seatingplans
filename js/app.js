@@ -7,7 +7,7 @@ const $=sel=>document.querySelector(sel), $$=sel=>[...document.querySelectorAll(
 const currentClass=()=>data.classes.find(c=>c.id===classId);
 const currentRoom=()=>data.rooms.find(r=>r.id===roomId)||data.rooms[0];
 const currentPlan=()=>data.plans.find(p=>p.id===planId);
-const currentStudents=()=>data.students.filter(s=>s.classId===classId).sort((a,b)=>a.name.localeCompare(b.name,'en-GB'));
+const currentStudents=()=>data.students.filter(s=>s.classId===classId&&s.active!==false).sort((a,b)=>a.name.localeCompare(b.name,'en-GB'));
 const student=id=>data.students.find(s=>s.id===id);
 const label=s=>esc(s||'');
 const h=(tag,text,cls='')=>`<${tag}${cls?` class="${cls}"`:''}>${esc(text)}</${tag}>`;
@@ -166,7 +166,70 @@ function rulesModal(){const p=currentPlan();if(!p)return;const rows=(p.rules||[]
 function recordModal(type='homework',editId=''){const old=data.records.find(x=>x.id===editId);if(old)type=old.type;if(!classId||!currentStudents().length){notice('Import a class first.','error');return;}const s=currentStudents().map(x=>({value:x.id,label:x.name}));openModal(old?'Edit teacher record':type==='homework'?'Add homework record':'Add behaviour record',`<div class="field-grid"><label>Pupil${choose('studentId',s,old?.studentId||selectedStudent)}</label>${field('date','Date',old?.date||isoDate(),'date')}</div><label>Category${choose('category',type==='homework'?[{value:'Homework not submitted',label:'Homework not submitted'},{value:'Homework late',label:'Homework late'},{value:'Homework incomplete',label:'Homework incomplete'},{value:'Other',label:'Other'}]:data.categories,old?.category||'')}</label>${type==='homework'?`<label>Homework task<input name="assignment" value="${esc(old?.assignment||'')}" maxlength="200" placeholder="e.g. Unit 2 revision"></label><label>Status${choose('status',['Missing','Late','Resolved'],old?.status||'Missing')}</label>`:''}<label>Notes<textarea name="notes" rows="3" maxlength="3000">${esc(old?.notes||'')}</textarea></label>${old?'<label class="check"><input type="checkbox" name="delete"> Delete this record</label>':''}`,fd=>{const pupil=fd.get('studentId');if(!currentStudents().some(s=>s.id===pupil))throw new Error('Pupil not in this class.');mutation(()=>{if(old&&fd.has('delete'))data.records=data.records.filter(r=>r.id!==old.id);else{const item=old||{id:uid(),classId,type};Object.assign(item,{studentId:pupil,date:fd.get('date'),category:fd.get('category'),status:type==='homework'?fd.get('status'):'Recorded',assignment:clean(fd.get('assignment')),notes:clean(fd.get('notes'))});if(!old)data.records.push(item);}});},old?'Save changes':'Add record');}
 function download(content,name,mime){const blob=new Blob([content],{type:mime});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),15000);}
 function backupModal(){if(!crypto.subtle){notice('Encrypted backups require a secure (HTTPS) browser context.','error');return;}openModal('Create encrypted backup',`<div class="callout privacy">Creates one encrypted file containing all your session data, including private OPP details. Choose a strong, unique password.</div>${field('password','Backup password (12+ characters)','','password')}${field('confirm','Repeat password','','password')}`,async fd=>{const pass=String(fd.get('password'));if(pass.length<12||pass!==fd.get('confirm'))throw new Error('Passwords must match and be at least 12 characters.');const encrypted=await encryptBackup(data,pass);download(encrypted,`seating-plans-${isoDate()}.seatingplan`,'application/octet-stream');dirty=false;render();notice('Encrypted backup downloaded. Store it securely.','success');});}
-async function importCSV(files){if(!files.length)return;let added=0,updated=0;const parsed=[];for(const f of files){if(f.size>10*1024*1024)throw new Error('CSV larger than 10 MB.');const text=await f.text();parsed.push(readEdulink(text));}mutation(()=>{for(const pack of parsed)for(const incoming of pack.students){const group=incoming.className;let c=data.classes.find(x=>x.name.toLowerCase()===group.toLowerCase());if(!c){c={id:uid(),name:group};data.classes.push(c);}const key=nameKey(incoming.name);const existing=data.students.find(x=>x.classId===c.id&&nameKey(x.name)===key);if(existing){Object.assign(existing,incoming,{id:existing.id,classId:c.id,opp:existing.opp,notes:existing.notes});updated++;}else{data.students.push({...incoming,id:uid(),classId:c.id,opp:null,notes:''});added++;}if(!classId)classId=c.id;}});importSummary=`Added ${added} pupils; refreshed ${updated}. CSV columns recognised: ${parsed.map(p=>p.matched.length).join(', ')}.`;notice(importSummary,'success');}
+async function importCSV(files){
+ if(!files.length)return;
+ const incoming=[];
+ for(const file of files){
+  if(file.size>10*1024*1024)throw new Error('CSV larger than 10 MB.');
+  const pack=readEdulink(await file.text());
+  incoming.push(...pack.students);
+ }
+ if(!incoming.length)throw new Error('No pupils found in these files.');
+ reviewEdulinkImport(incoming);
+}
+function reviewEdulinkImport(incoming){
+ const preview=buildEdulinkReview(data.classes,data.students,incoming),items=preview.items;
+ const counts={matched:items.filter(x=>x.status==='matched').length,new:items.filter(x=>x.status==='new').length,review:items.filter(x=>['duplicate','ambiguous'].includes(x.status)).length};
+ const rows=items.map(item=>{
+  const existing=data.classes.find(c=>c.id===item.classId);
+  const options=[{value:'new',label:'Add as new pupil'},{value:'skip',label:'Skip this row'},...data.students.filter(s=>s.classId===existing?.id).sort((a,b)=>a.name.localeCompare(b.name,'en-GB')).map(s=>({value:'match:'+s.id,label:'Match to '+s.name+(s.active===false?' (inactive)':'')}))];
+  const value=item.status==='duplicate'||item.status==='ambiguous'?'skip':item.suggestedId?'match:'+item.suggestedId:'new';
+  const kind={matched:'Matched',new:'New pupil',ambiguous:'Needs review',duplicate:'Duplicate in export'}[item.status];
+  return `<div class="list-card" style="align-items:flex-start;flex-wrap:wrap"><div style="flex:1;min-width:160px"><strong>${esc(item.incoming.name)}</strong><small>${esc(item.group)}${item.incoming.reg?' · '+esc(item.incoming.reg):''} · ${esc(kind)}</small></div><label style="min-width:200px;flex:1">Import action${choose('map_'+item.index,options,value)}</label></div>`;
+ }).join('');
+ const absent=preview.notInExport.map(s=>`<label class="check" style="display:block;margin:8px 0"><input type="checkbox" name="retire_${esc(s.id)}"> Mark <strong>${esc(s.name)}</strong> inactive (${esc(data.classes.find(c=>c.id===s.classId)?.name||'Class')})</label>`).join('');
+ openModal('Review Edulink marksheet changes',`<div class="notice"><strong>${items.length} incoming pupils:</strong> ${counts.matched} suggested matches, ${counts.new} new, ${counts.review} requiring review. These are suggestions only; nothing has been changed.</div><p class="muted tiny">Check name changes and duplicates. Choose an existing pupil to retain their seating history, OPP and homework records. The import must be reviewed and confirmed locally.</p><div class="list-scroll" style="max-height:360px">${rows}</div><hr class="divider"><h3>Not found in this export (${preview.notInExport.length})</h3><p class="muted tiny">These pupils remain active by default. Only tick a pupil if you have confirmed they have left this teaching group. If this export is incomplete, do not mark anyone inactive.</p><div class="list-scroll" style="max-height:150px">${absent||'<p class="muted tiny">All known active pupils were matched, or this is a new class.</p>'}</div>`,fd=>{
+  const choices=items.map(item=>({item,decision:String(fd.get('map_'+item.index)||'skip')}));
+  const used=new Set(),newNames=new Set();
+  for(const {item,decision} of choices){
+   if(decision==='skip')continue;
+   if(decision==='new'){
+    const key=item.group.toLowerCase()+'|'+nameKey(item.incoming.name);
+    if(newNames.has(key))throw new Error('Duplicate new pupil: '+item.incoming.name+'. Skip or match one of the duplicate rows.');
+    newNames.add(key);
+   }else if(decision.startsWith('match:')){
+    const id=decision.slice(6),existing=data.students.find(s=>s.id===id);
+    if(!existing||!data.classes.some(c=>c.id===existing.classId&&c.name.toLowerCase()===item.group.toLowerCase()))throw new Error('Pupil mapping is not valid for '+item.group+'.');
+    if(used.has(id))throw new Error('One existing pupil has been selected for more than one CSV row. Review the mappings.');
+    used.add(id);
+   }else throw new Error('Invalid import option.');
+  }
+  for(const {item,decision} of choices.filter(x=>x.decision==='new')){
+   const exists=data.students.some(s=>data.classes.some(c=>c.id===s.classId&&c.name.toLowerCase()===item.group.toLowerCase())&&nameKey(s.name)===nameKey(item.incoming.name));
+   if(exists)throw new Error(item.incoming.name+' already exists in this class. Select Match existing, not Add as new.');
+  }
+  let added=0,updated=0,retired=0;
+  mutation(()=>{
+   for(const {item,decision} of choices){
+    if(decision==='skip')continue;
+    let cls=data.classes.find(c=>c.name.toLowerCase()===item.group.toLowerCase());
+    if(!cls){cls={id:uid(),name:item.group};data.classes.push(cls);}
+    if(decision==='new'){data.students.push({...item.incoming,id:uid(),classId:cls.id,active:true,opp:null,notes:''});added++;}
+    else{
+     const old=data.students.find(s=>s.id===decision.slice(6));
+     Object.assign(old,item.incoming,{id:old.id,classId:cls.id,active:true,opp:old.opp,notes:old.notes});
+     updated++;
+    }
+    if(!classId)classId=cls.id;
+   }
+   for(const s of preview.notInExport){
+    if(fd.has('retire_'+s.id)&&!used.has(s.id)){const pupil=data.students.find(x=>x.id===s.id);if(pupil){pupil.active=false;retired++;}}
+   }
+  });
+  importSummary=`Edulink reviewed: ${added} added, ${updated} refreshed, ${retired} marked inactive. Existing seating and records retained.`;
+  notice(importSummary,'success');
+ },'Confirm reviewed import');
+}
 async function importOPPs(files){
  if(!files.length)return;
  if(!data.students.length){notice('Import an Edulink class list before importing OPPs.','error');return;}
