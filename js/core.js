@@ -1,3 +1,4 @@
+import {extractPdfOpp} from './pdf-opp.js';
 /* Seating Plans | self-contained browser utilities. No network, cookies or persistent storage. */
 export const uid = () => (globalThis.crypto && crypto.randomUUID ? crypto.randomUUID() : 'id-' + Math.random().toString(36).slice(2));
 export const clone = x => JSON.parse(JSON.stringify(x));
@@ -230,16 +231,30 @@ export async function readOppFiles(files,progress=()=>{}) {
  const documents=[];let index=0;
  for(const f of files){
   if(f.size>60*1024*1024)throw new Error('File too large: '+f.name);
-  if(/\.docx$/i.test(f.name)){documents.push({filename:f.name,data:new Uint8Array(await f.arrayBuffer())});}
-  else if(/\.zip$/i.test(f.name)){
+  if(/\.(docx|pdf)$/i.test(f.name)){
+   documents.push({filename:f.name,data:new Uint8Array(await f.arrayBuffer())});
+  }else if(/\.zip$/i.test(f.name)){
    const zip=zipEntries(await f.arrayBuffer());
-   const found=zip.entries.filter(e=>/\.docx$/i.test(e.name)&&!e.name.startsWith('__MACOSX/')&&!e.name.startsWith('._'));
-   if(found.length>500)throw new Error('Please import fewer than 500 OPPs at once.');
-   for(const entry of found)documents.push({filename:entry.name.split('/').pop(),data:await zipRead(zip,entry)});
-  }
+   const found=zip.entries.filter(e=>/\.(docx|pdf)$/i.test(e.name)&&!e.name.startsWith('__MACOSX/')&&!e.name.startsWith('._'));
+   if(found.length+documents.length>500)throw new Error('Please import fewer than 500 OPPs at once.');
+   for(const entry of found){
+    if(/\.pdf$/i.test(entry.name)&&entry.uncompressed>24*1024*1024){
+     documents.push({filename:entry.name.split('/').pop(),error:'PDF exceeds the 24 MB safety limit.'});
+    }else documents.push({filename:entry.name.split('/').pop(),data:await zipRead(zip,entry)});
+   }
+  }else documents.push({filename:f.name,error:'Unsupported file. Choose PDF, DOCX or ZIP containing these files.'});
+  if(documents.length>500)throw new Error('Please import fewer than 500 OPPs at once.');
  }
  const result=[];
- for(const doc of documents){index++;try{result.push({filename:doc.filename,opp:await extractOpp(doc.data,doc.filename)});}catch(e){result.push({filename:doc.filename,error:e.message});}progress(index,documents.length);}
+ for(const doc of documents){
+  index++;
+  try{
+   if(doc.error)throw Error(doc.error);
+   const opp=/\.pdf$/i.test(doc.filename)?await extractPdfOpp(doc.data,doc.filename):await extractOpp(doc.data,doc.filename);
+   result.push({filename:doc.filename,opp});
+  }catch(e){result.push({filename:doc.filename,error:e.message});}
+  progress(index,documents.length);
+ }
  return result;
 }
 
