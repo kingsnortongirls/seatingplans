@@ -8,7 +8,7 @@ A fully client-side seating plan and teaching toolkit designed for static hostin
 * There is no backend, API, analytics, external font, runtime CDN, login, cookies, localStorage, IndexedDB or service worker.
 * The Content Security Policy blocks network connections with `connect-src 'none'`, remote scripts, frames and object embeds.
 * Pupil and teacher record data is held in memory. Reloading or closing the page discards the session unless the teacher chooses to download a local **encrypted** backup.
-* Backup export uses native Web Crypto AES-256-GCM with PBKDF2-SHA-256 (310,000 iterations), unique random salt and IV. Passwords never leave the browser and cannot be recovered.
+* Backup export uses native Web Crypto AES-256-GCM with PBKDF2-SHA-256 (310,000 iterations), unique random salt and IV. Passwords never leave the browser and cannot be recovered. New backups require passwords of at least **8 characters**; a longer, unique passphrase is recommended. Existing backup files continue to restore using their original password.
 * Exported backups can contain highly sensitive pupil data, including OPP wording and photographs. Treat them as school confidential records and store only in school-approved protected locations.
 * Teacher printouts may display confidential information. Pupil printouts deliberately hide the indicators on seating cards.
 * A static website still needs school approval and a deployment/data protection review. GitHub serves the blank application files only; it receives ordinary page requests for app files, never imported pupils.
