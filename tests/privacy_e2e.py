@@ -124,6 +124,7 @@ async def main():
             await page.get_by_role('button',name='+ New version').click()
             await page.locator('#modalForm button[type=submit]').click()
             assert await page.locator('.seat').count()==32
+            await page.locator('.advanced-plan-tools summary').click()
             await page.get_by_role('button',name='Plan notes').click()
             await page.locator('#modalForm textarea[name=notes]').fill(SENTINEL)
             await page.get_by_role('button',name='Save notes').click()
@@ -228,6 +229,7 @@ async def main():
             await page.get_by_role('button',name='Decrypt and restore').click()
             await page.locator('#nav [data-view=seating]').click()
             assert await page.locator('.seat:not(.unassigned)').count()==3
+            await page.locator('.advanced-plan-tools summary').click()
             await page.get_by_role('button',name='Plan notes').click()
             assert SENTINEL in await page.locator('#modalForm textarea[name=notes]').input_value()
             await page.get_by_role('button',name='Cancel').click()
