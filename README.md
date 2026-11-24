@@ -62,7 +62,7 @@ Two additional **editable** presets have been reconstructed from the supplied Ed
 
 **Empty positions count as usable seats.** Each one remains individually movable, assignable and editable. Neither room starts with pupil-specific accessibility priorities, since those cannot be established from the screenshots.
 
-Both rooms appear in the starting room list, in **New room → Layout**, and in the guided seating-plan room selector. The **Whiteboard position** control in the Room Designer lets staff place the front at the top or bottom of the diagram, which is also taken into account by the seating-rule generator. If an earlier encrypted backup is restored, missing IT1 and RM29 built-in rooms are added without overwriting existing templates, and the session is marked as needing a new backup.
+Both rooms appear in the starting room list, in **New room → Layout**, and in the guided seating-plan room selector. The **Whiteboard position** control in the Room Designer lets staff place the front at the top or bottom of the diagram, which is also taken into account by the seating-rule generator. If an earlier encrypted backup is restored, missing IT1 and RM29 built-in rooms are added without overwriting existing templates. An unmodified older 31-seat IT1 room and its seating-plan snapshots are safely expanded to 33 seats without moving existing pupils or changing seat IDs. Customised layouts are left untouched. Restore changes require a new backup.
 
 ## Simplified Room Designer
 
