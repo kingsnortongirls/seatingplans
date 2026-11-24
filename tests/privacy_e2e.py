@@ -178,12 +178,47 @@ async def main():
             assert await page.get_by_text('Missing PP field').count()==0
             # Original-workbook parity: manual assessment history and teacher progress.
             await page.locator('#nav [data-view=assessments]').click()
-            await page.get_by_role('button',name='+ Save assessment').click()
+            await page.get_by_role('button',name='Single pupil assessment').click()
             await page.locator('#modalForm input[name=name]').fill('Synthetic unit assessment')
             await page.locator('#modalForm input[name=grade]').fill('6')
             await page.locator('#modalForm input[name=date]').fill('2026-11-23')
             await page.locator('#modalForm button[type=submit]').click()
             assert await page.locator('.progress-svg').count()==1
+            # Guided whole-class assessment. Enter advances; Back and the
+            # clickable register correct grades before any records are saved.
+            await page.get_by_role('button',name='Add whole class assessment').click()
+            assert await page.locator('#modalForm input[name=name]').count()==1
+            await page.locator('#modalForm input[name=name]').fill('Synthetic whole class test')
+            await page.locator('#modalForm input[name=date]').fill('2026-11-24')
+            await page.locator('#modalForm button[type=submit]').click()
+            await page.locator('#assessmentGrade').wait_for()
+            assert await page.get_by_text('Pupil 1 of 3').count()==1
+            await page.locator('#assessmentGrade').fill('7')
+            await page.locator('#assessmentGrade').press('Enter')
+            assert await page.get_by_text('Pupil 2 of 3').count()==1
+            await page.locator('#assessmentGrade').fill('5')
+            await page.locator('#assessmentGrade').press('Enter')
+            assert await page.get_by_text('Pupil 3 of 3').count()==1
+            await page.get_by_role('button',name='Previous pupil').click()
+            assert await page.locator('#assessmentGrade').input_value()=='5'
+            await page.locator('#assessmentGrade').fill('6')
+            await page.locator('#assessmentGrade').press('Enter')
+            await page.get_by_role('button',name='No result / Skip').click()
+            assert await page.get_by_text('End of class reached').count()==1
+            assert await page.get_by_text('2',exact=True).count()>=1
+            await page.get_by_role('button',name='Save all and return to overview').click()
+            assert await page.locator('#breadcrumbs').inner_text()=='Class overview'
+            await page.locator('#nav [data-view=assessments]').click()
+            # Reopening the same date/name preloads results rather than
+            # appending duplicate pupil assessments.
+            await page.get_by_role('button',name='Add whole class assessment').click()
+            await page.locator('#modalForm input[name=name]').fill('Synthetic whole class test')
+            await page.locator('#modalForm input[name=date]').fill('2026-11-24')
+            await page.locator('#modalForm button[type=submit]').click()
+            await page.locator('#assessmentGrade').wait_for()
+            assert await page.locator('#assessmentGrade').input_value()=='7'
+            await page.get_by_role('button',name='Cancel without saving').click()
+            assert await page.locator('#breadcrumbs').inner_text()=='Assessment history'
             # One-screen lesson timer, explicit question outcome and privacy lock.
             await page.locator('#nav [data-view=lesson]').click()
             await page.get_by_role('button',name='2 min').click()
