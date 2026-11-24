@@ -99,6 +99,14 @@ These changes retain the strict **local only, no automatic student-data storage*
 
 OPP text is interpreted locally using explicit, deterministic phrase matching, not sent to an external AI service. Near-teacher means one of the closest third of seats to the teacher desk in the current room template. Independent seating means no other assigned pupil within 15 layout units. These are useful starting definitions, not substitutes for reviewing the individual OPP and room layout. Backups and restoration remain encrypted and entirely browser based. Always test with synthetic data and obtain school approval before using real pupil files.
 
+## Fast whole-class assessment entry
+
+On **Assessment history** or **Class overview**, choose **Add whole class assessment**. Enter a name and date, then type each pupil's grade. Press **Enter** to move automatically to the next pupil. The screen shows the pupil's name, target and current grade, with a progress bar and a tappable class list. **Previous pupil** goes back, **Next pupil** goes forward, and **No result / Skip** deliberately leaves someone ungraded. You can revisit and edit any grade without saving an intermediate result.
+
+After the last pupil, the screen asks **End of class reached. Save the results and return to the class overview?** It shows how many pupils received grades and how many have no result. Selecting **Save all and return to overview** stores the entire assessment in a single Undo-able operation. Cancelling the draft or navigating elsewhere requires confirmation and saves nothing. The draft exists only in the current browser tab and is not included in encrypted backups until final confirmation.
+
+If an assessment already exists with the same class, date and name, its pupil grades are prefilled. The final save replaces those matching results rather than duplicating them; choosing **No result** removes an existing grade for that pupil in that assessment. Grades are deliberately free-text (up to eight characters) so GCSE numbers and A Level letters both work. Results remain teacher-only.
+
 ## Interface and everyday workflow
 
 The interface uses a consistent set of **local SVG icons** across the menu and main actions; there is no external icon library or remote asset request. Navigation is grouped into **Plan & teach**, **Pupil information** and **Your data**, with a mobile drawer that closes on navigation or a tap outside.
@@ -148,7 +156,7 @@ The application includes pupil imports, seating arrangements, teaching strategie
 ### Restored original workflows
 - **Task timer:** dedicated local countdown within Lesson mode, with 2/5/10/15/20/30 minute presets, custom duration, pause/resume and fullscreen.
 - **COTTA choice:** Edulink imports retain all recognised assessment column headings and their per-pupil values. Assessment history includes a class-specific **Displayed Edulink COTTA** dropdown that updates the grade shown on pupil cards. A reviewed CSV import reports missing required headings and duplicates.
-- **Teacher assessments:** enter, edit, or delete dated results with a result, target and notes, independently of Edulink. Results survive a class refresh and appear in each pupil's history and progress chart. Pupil cards show both selected COTTA and latest manually saved result.
+- **Teacher assessments:** save individual dated results with grade, target and notes, or use **Add whole class assessment** for guided, one-pupil-at-a-time grade entry. The whole-class flow asks for the assessment name/date once, takes Enter as Next, offers Previous/Next, Skip (no result) and a clickable class register for corrections, then asks to **Save all and return to class overview**. All grades are written together only at final confirmation, with one Undo step. Saving the same name/date again updates existing results instead of creating duplicates. Both methods stay independent of Edulink and retain pupil assessment history and charts. Neither method automatically saves an encrypted backup.
 - **Pupil strategies:** separate teacher-maintained **Agreed teaching strategies**, **What helps me learn (pupil voice)**, and **Reviewed date** fields, preserved on matching Edulink imports.
 - **Questioned/absent:** picking a name no longer marks it questioned. Use **Questioned ✓** or **Absent** explicitly; reset the round for a new lesson. Optional exclusions prevent calling on absent pupils.
 - **Behaviour and lateness:** separate totals for late arrivals and other behaviour, including older incidents categorised as **Late to lesson**. Record a date, optional lesson/period, minutes late and notes. Teacher Records provides pupil-level lateness totals and 7/30/90-day trends, plus editable behaviour categories.
