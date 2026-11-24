@@ -542,7 +542,7 @@ function manageClassView(){
  '<p class="muted tiny" id="manageCount" aria-live="polite">0 selected</p><div class="list-scroll" style="max-height:65vh">'+pupils.map(s=>'<label class="list-card check"><input type="checkbox" data-manage-pupil value="'+esc(s.id)+'"><div><strong>'+esc(s.name)+'</strong><small>'+esc([s.reg,s.active===false?'Inactive':'Active'].filter(Boolean).join(' · '))+'</small></div></label>').join('')+'</div></section>';
 }
 function manageSelected(){
- return new Set($('#app [data-manage-pupil]:checked').map(el=>el.value));
+ return new Set(Array.from(document.querySelectorAll('#app [data-manage-pupil]:checked'), el=>el.value));
 }
 function manageCount(){const el=$('#manageCount');if(el)el.textContent=manageSelected().size+' selected';}
 function uniqueClassName(value,except=''){
