@@ -518,3 +518,57 @@
  .wizard-return-banner button{width:100%;margin:0}
 }
 @media print{.wizard-stage-progress,.wizard-class-selector,.wizard-return-banner{display:none!important}}
+
+/* IT1 (31 usable seats), reconstructed from the supplied Edulink layout:
+   left and right computer benches, two six-seat central banks and a
+   two-seat return at the upper-right. All empty positions remain seats. */
+.canvas.it1 .seat{width:7.4%;height:6.9%;min-height:25px;z-index:3}
+.canvas.it1 .seat strong{font-size:clamp(7px,.67vw,10px)}
+.canvas.it1 .seat small{font-size:8px}
+.canvas.it1 .teacher-desk{z-index:4;min-height:23px;max-width:15%}
+.canvas.it1 .board{left:35%;width:30%;height:5%;font-size:9px;letter-spacing:.3px}
+.canvas.it1 .it1-table{
+ position:absolute;z-index:0;pointer-events:none;background:#c3d4ec;
+ border:2px solid #8eaedd;border-radius:5px;
+}
+.canvas.it1 .it1-left{left:3%;top:7%;width:10%;height:79%}
+.canvas.it1 .it1-centre-left{left:35%;top:25%;width:10%;height:53%}
+.canvas.it1 .it1-centre-right{left:52%;top:25%;width:10%;height:53%}
+.canvas.it1 .it1-right{left:87%;top:25%;width:10%;height:62%}
+.canvas.it1 .it1-top-right{left:70%;top:7%;width:18%;height:10%}
+.canvas.it1 .it1-top-end{left:87%;top:15%;width:10%;height:10%}
+
+/* RM29 (29 usable seats): six left, five right, and nine paired
+   centre desks across three rows. Whiteboard side is editable because
+   the supplied screenshot does not label it. */
+.canvas.rm29 .seat{width:7.5%;height:9.5%;min-height:27px;z-index:3}
+.canvas.rm29 .seat strong{font-size:clamp(7px,.68vw,10px)}
+.canvas.rm29 .seat small{font-size:8px}
+.canvas.rm29 .teacher-desk{z-index:4;max-width:16%;min-height:24px}
+.canvas.rm29 .board{left:36%;width:28%;height:7%;font-size:9px;letter-spacing:.3px}
+.canvas.rm29 .rm29-table{
+ position:absolute;z-index:0;pointer-events:none;background:#c3d4ec;
+ border:2px solid #8eaedd;border-radius:5px;
+}
+.canvas.rm29 .rm29-left{left:3%;top:14%;width:10%;height:76%}
+.canvas.rm29 .rm29-right{left:87%;top:14%;width:10%;height:64%}
+.canvas.rm29 .rm29-pair{width:18%;height:11%}
+
+@media(max-width:740px){
+ .canvas.it1{min-height:560px}
+ .canvas.rm29{min-height:465px}
+ .canvas.it1 .seat{width:7.8%;height:6.7%;min-height:25px;padding:1px}
+ .canvas.rm29 .seat{width:7.7%;height:9.0%;min-height:26px;padding:1px}
+ .canvas.it1 .seat strong,.canvas.rm29 .seat strong{font-size:7px}
+ .canvas.it1 .seat small,.canvas.rm29 .seat small{display:none}
+ .canvas.it1 .teacher-desk,.canvas.rm29 .teacher-desk{font-size:7px}
+ .canvas.it1 .board,.canvas.rm29 .board{font-size:7px}
+}
+@media print{
+ .canvas.it1 .seat{min-height:0;height:6.9%;width:7.4%}
+ .canvas.rm29 .seat{min-height:0;height:9.5%;width:7.5%}
+ .canvas.it1 .seat strong,.canvas.rm29 .seat strong{font-size:9px}
+ .canvas.it1 .it1-table,.canvas.rm29 .rm29-table{
+  -webkit-print-color-adjust:exact;print-color-adjust:exact
+ }
+}
