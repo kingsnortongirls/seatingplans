@@ -47,7 +47,7 @@ async def main():
   assert 'Matched 1 OPP(s)' in await page.locator('main').inner_text()
   year_zip.unlink(missing_ok=True)
   assert await page.get_by_role('button',name='Import next class').count()==1
-  await page.get_by_role('button',name="I'm finished · Create backup").click()
+  await page.get_by_role('button',name="Done importing · Back up classes").click()
   # Guided setup now stops at the classes backup checkpoint. The real-CSP
   # browser test verifies the file before moving on to the seating wizard.
   assert await page.get_by_text('Save your classes and OPPs').count()>=1
