@@ -633,3 +633,30 @@
 @media print{
  .assessment-entry-layout,.assessment-exit,.assessment-progress,.assessment-progress-caption{display:none!important}
 }
+
+/* Room cards: reserve space for wrapped names, badges and attainment data.
+   Preserve seat centres and use a larger canvas rather than overlapping rows. */
+@media screen {
+ .canvas{min-width:960px;min-height:900px;aspect-ratio:1.15}
+ .canvas.it3,.canvas.it2,.canvas.rm29{min-height:960px}
+ .canvas.it1{min-height:1180px}
+ .stage-card{overflow-x:auto}
+ .canvas .seat,.canvas.it1 .seat,.canvas.it2 .seat,.canvas.it3 .seat,.canvas.rm29 .seat{
+  height:auto;min-height:74px;padding:5px 3px;gap:3px;
+  overflow:visible;justify-content:center;
+ }
+ .canvas .seat strong{font-size:11px;line-height:1.12;max-width:100%;overflow-wrap:anywhere}
+ .canvas .seat small{display:block;font-size:9px;line-height:1.15}
+ .canvas .seat > *{flex-shrink:0}
+ .canvas .seat .seat-tags,.canvas.it2 .seat .seat-tags,.canvas.it3 .seat .seat-tags{
+  max-height:none;overflow:visible;gap:2px;flex-wrap:wrap;
+ }
+ .canvas .seat .seat-tag,.canvas.it2 .seat .seat-tag,.canvas.it3 .seat .seat-tag{
+  font-size:8px;padding:2px 3px;line-height:1.1;
+ }
+ .canvas .seat .seat-extra,.canvas .seat .seat-meta{
+  font-size:8px;line-height:1.15;white-space:normal;overflow:visible;
+  overflow-wrap:anywhere;text-overflow:clip;
+ }
+ .canvas .seat[class*="grade-"]{padding-bottom:8px}
+}
