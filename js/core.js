@@ -339,7 +339,8 @@ export function buildPreset(kind,name) {
   [72,82].forEach(x=>add(x,13,'IT2-Upper-Right'));
   [28,38].forEach(x=>add(x,90,'IT2-Lower-Left'));
   [72,82].forEach(x=>add(x,90,'IT2-Lower-Right'));
-  return {id:uid(),name:name||'IT2',kind:'it2',preset:'it2',seats,teacher:{x:55,y:86},board:'back'};
+  applyIT2Priorities({seats});
+  return {id:uid(),name:name||'IT2',kind:'it2',preset:'it2',accessIT2Version:1,seats,teacher:{x:55,y:86},board:'back'};
  }
  const seats=[];const add=(x,y,row,col,group)=>seats.push({id:uid(),label:String(seats.length+1),x,y,rotation:0,priority:'normal',group});
  if(kind==='pairs')for(let row=0;row<4;row++)for(let pair=0;pair<4;pair++)for(let col=0;col<2;col++)add(9+pair*23+col*9,24+row*18,row,col,'R'+row+'P'+pair);
@@ -398,11 +399,20 @@ function upgradeIT3Access(layout){
  if(new Set(layout.seats.map(s=>Number(s.label))).size!==34||layout.seats.some(s=>!Number.isInteger(Number(s.label))||Number(s.label)<1||Number(s.label)>34))return false;
  applyIT3Priorities(layout);layout.accessIT3Version=2;return true;
 }
+const it2AccessibleSeats=new Set([24,25,30,31,32,33]);
+function applyIT2Priorities(layout){
+ for(const s of layout.seats){s.priority=it2AccessibleSeats.has(Number(s.label))?'access':'normal';s.avoidIfPossible=false;}
+}
+function upgradeIT2Access(layout){
+ if(!layout||layout.kind!=='it2'||layout.accessIT2Version===1||layout.seats?.length!==33)return false;
+ if(new Set(layout.seats.map(s=>Number(s.label))).size!==33||layout.seats.some(s=>!Number.isInteger(Number(s.label))||Number(s.label)<1||Number(s.label)>33))return false;
+ applyIT2Priorities(layout);layout.accessIT2Version=1;return true;
+}
 export function addMissingSchoolRooms(rooms,plans=[]){
  if(!Array.isArray(rooms))throw new Error('Room collection is not an array.');
  let changed=0;
- for(const room of rooms){if(upgradeStandardAccess(room))changed++;if(upgradeIT3Access(room))changed++;}
- for(const plan of plans||[]){if(upgradeStandardAccess(plan.layout))changed++;if(upgradeIT3Access(plan.layout))changed++;}
+ for(const room of rooms){if(upgradeStandardAccess(room))changed++;if(upgradeIT3Access(room))changed++;if(upgradeIT2Access(room))changed++;}
+ for(const plan of plans||[]){if(upgradeStandardAccess(plan.layout))changed++;if(upgradeIT3Access(plan.layout))changed++;if(upgradeIT2Access(plan.layout))changed++;}
  for(const kind of ['it1','rm29']){
   if(rooms.some(room=>String(room.preset||room.kind||'').toLowerCase()===kind||
    String(room.name||'').trim().toLowerCase()===kind))continue;
@@ -427,7 +437,7 @@ export function addMissingSchoolRooms(rooms,plans=[]){
 
 export function newPlan(classId,room,label) {
  return {id:uid(),classId,roomId:room.id,name:label||'Autumn 1',created:new Date().toISOString(),
-  layout:clone({kind:room.kind||'',access242Version:room.access242Version,accessIT3Version:room.accessIT3Version,seats:room.seats,teacher:room.teacher,board:room.board}),assignments:{},locks:[],
+  layout:clone({kind:room.kind||'',access242Version:room.access242Version,accessIT3Version:room.accessIT3Version,accessIT2Version:room.accessIT2Version,seats:room.seats,teacher:room.teacher,board:room.board}),assignments:{},locks:[],
   rules:[],accessPreference:{send:false,pp:false},generationOptions:{keepApart:true,keepLocked:true,mixed:false,front:true},notes:''};
 }
 // A teacher can explicitly opt into preferring accessible seating for SEND,
