@@ -269,20 +269,21 @@ export function defaultRoom(name='Standard 2-4-2') {
 export function buildPreset(kind,name) {
  if(kind==='242')return defaultRoom(name||'Standard 2-4-2');
  if(kind==='it1'){
-  // IT1 from the supplied Edulink room diagram: ten positions down the
-  // left computer bench, seven down the right, two banks of six in the
-  // centre, plus two at the top-right return. All 31 places count, even
-  // where the original screenshot showed an unoccupied computer.
+  // IT1 from the supplied Edulink diagram: ten seats along the left
+  // computer bench, eight along the right, two banks of six in the
+  // centre, plus THREE at the upper-right return. All 33 positions count,
+  // including empty computers. Real pupil data is never part of presets.
   const seats=[];
   const add=(x,y,group)=>seats.push({id:uid(),label:String(seats.length+1),
    x,y,rotation:0,priority:'normal',group});
   [11,19,27,35,43,51,59,67,75,83].forEach(y=>add(8,y,'IT1-Left'));
-  [29,38,47,56,65,74,83].forEach(y=>add(92,y,'IT1-Right'));
+  [27,35,43,51,59,67,75,83].forEach(y=>add(92,y,'IT1-Right'));
   [29,38,47,56,65,74].forEach(y=>{
    add(40,y,'IT1-Middle-Left');
    add(57,y,'IT1-Middle-Right');
   });
-  add(79,11,'IT1-Upper-Right');
+  add(79,9,'IT1-Upper-Right');
+  add(87,9,'IT1-Upper-Right');
   add(92,19,'IT1-Upper-Right');
   return {id:uid(),name:name||'IT1',kind:'it1',preset:'it1',seats,
    teacher:{x:76,y:91},board:'back'};
