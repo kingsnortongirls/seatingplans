@@ -319,19 +319,8 @@ export function buildPreset(kind,name) {
   [30,40,50,60,70,80,90].forEach(y=>add(92,y,'IT3-Right'));
   [26,36,46,56,66,76].forEach(x=>add(x,40,'IT3-Island-North'));
   [26,36,46,56,66,76].forEach(x=>add(x,65,'IT3-Island-South'));
-  // Default accessibility priorities follow the approved IT3 layout:
-  // accessible seat 13 on the left, seat 20 on the right, and
-  // all six places on the lower edge of the central island.
-  // Back corner seats 15 and 22 are marked avoid-if-possible.
-  // These are classroom-position priorities, never pupil attributes.
-  const easyAccess=new Set([13,20,29,30,31,32,33,34]);
-  const avoid=new Set([15,22]);
-  for(const seat of seats){
-   const number=Number(seat.label);
-   if(easyAccess.has(number))seat.priority='access';
-   else if(avoid.has(number))seat.priority='avoid';
-  }
-  return {id:uid(),name:name||'IT3',kind:'it3',preset:'it3',seats,teacher:{x:76,y:90},board:'back'};
+  applyIT3Priorities({seats});
+  return {id:uid(),name:name||'IT3',kind:'it3',preset:'it3',accessIT3Version:2,seats,teacher:{x:76,y:90},board:'back'};
  }
  if(kind==='it2'){
   // IT2: 33 usable positions from the classroom photograph. Empty chairs
@@ -397,11 +386,23 @@ function upgradeStandardAccess(layout){
  for(const s of layout.seats)if(standardAccessibleSeats.has(Number(s.label))&&s.priority==='normal')s.priority='access';
  layout.access242Version=1;return true;
 }
+function applyIT3Priorities(layout){
+ for(const s of layout.seats){
+  const n=Number(s.label);
+  s.priority=(n>=9&&n<=22||n>=29&&n<=34)?'access':n>=23&&n<=28?'avoid':'normal';
+  s.avoidIfPossible=n===15||n===22;
+ }
+}
+function upgradeIT3Access(layout){
+ if(!layout||layout.kind!=='it3'||layout.accessIT3Version===2||layout.seats?.length!==34)return false;
+ if(new Set(layout.seats.map(s=>Number(s.label))).size!==34||layout.seats.some(s=>!Number.isInteger(Number(s.label))||Number(s.label)<1||Number(s.label)>34))return false;
+ applyIT3Priorities(layout);layout.accessIT3Version=2;return true;
+}
 export function addMissingSchoolRooms(rooms,plans=[]){
  if(!Array.isArray(rooms))throw new Error('Room collection is not an array.');
  let changed=0;
- for(const room of rooms)if(upgradeStandardAccess(room))changed++;
- for(const plan of plans||[])if(upgradeStandardAccess(plan.layout))changed++;
+ for(const room of rooms){if(upgradeStandardAccess(room))changed++;if(upgradeIT3Access(room))changed++;}
+ for(const plan of plans||[]){if(upgradeStandardAccess(plan.layout))changed++;if(upgradeIT3Access(plan.layout))changed++;}
  for(const kind of ['it1','rm29']){
   if(rooms.some(room=>String(room.preset||room.kind||'').toLowerCase()===kind||
    String(room.name||'').trim().toLowerCase()===kind))continue;
@@ -426,7 +427,7 @@ export function addMissingSchoolRooms(rooms,plans=[]){
 
 export function newPlan(classId,room,label) {
  return {id:uid(),classId,roomId:room.id,name:label||'Autumn 1',created:new Date().toISOString(),
-  layout:clone({kind:room.kind||'',access242Version:room.access242Version,seats:room.seats,teacher:room.teacher,board:room.board}),assignments:{},locks:[],
+  layout:clone({kind:room.kind||'',access242Version:room.access242Version,accessIT3Version:room.accessIT3Version,seats:room.seats,teacher:room.teacher,board:room.board}),assignments:{},locks:[],
   rules:[],accessPreference:{send:false,pp:false},generationOptions:{keepApart:true,keepLocked:true,mixed:false,front:true},notes:''};
 }
 // A teacher can explicitly opt into preferring accessible seating for SEND,
@@ -601,7 +602,7 @@ function score(plan,assigned,studentsById,eligibleIds=new Set(),options={}) {
  }
  for(const [seat,id] of Object.entries(assigned)){
   const s=plan.layout.seats.find(x=>x.id===seat),p=studentsById[id];if(!s||!p)continue;
-  if(s.priority==='avoid')cost+=120;
+  if(s.priority==='avoid'||s.avoidIfPossible)cost+=120;
   if(eligibleIds.has(id)&&s.priority!=='access')cost+=1800;
   // A small optional spread bonus; protected characteristics never enter the algorithm.
   if(p.prior&&/high/i.test(p.prior))cost+=Math.max(0,28-(plan.layout.board==='back'?100-s.y:s.y))*0.01;
@@ -644,14 +645,14 @@ export function autoSeat(plan,studentList,options={}) {
  const shuffle=items=>{const a=[...items];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
  let best=null;
  for(let run=0;run<16;run++){
-  const accessOrder=shuffle(seats.filter(s=>s.priority==='access'&&available.includes(s.id)).map(s=>s.id));
-  const otherOrder=shuffle(available.filter(id=>!accessOrder.includes(id)));
+  const accessOrder=shuffle(seats.filter(s=>s.priority==='access'&&available.includes(s.id)).map(s=>s.id)).sort((a,b)=>Number(!!seats.find(s=>s.id===a).avoidIfPossible)-Number(!!seats.find(s=>s.id===b).avoidIfPossible));
+  const otherOrder=shuffle(available.filter(id=>!accessOrder.includes(id))).sort((a,b)=>Number(seats.find(s=>s.id===a).priority==='avoid')-Number(seats.find(s=>s.id===b).priority==='avoid'));
   const eligible=shuffle(remaining.filter(id=>eligibleIds.has(id)));
   const others=shuffle(remaining.filter(id=>!eligibleIds.has(id)));
   // Use accessible positions for the opted-in group first. Do not move locked pupils.
   let current={...fixed};
   for(const id of eligible)current[(accessOrder.shift()||otherOrder.shift())]=id;
-  for(const id of others)current[(otherOrder.shift()||accessOrder.shift())]=id;
+  for(const id of others){const preferredOther=otherOrder.findIndex(k=>seats.find(s=>s.id===k).priority!=='avoid');const preferredAccess=accessOrder.findIndex(k=>!seats.find(s=>s.id===k).avoidIfPossible);const next=preferredOther>=0?otherOrder.splice(preferredOther,1)[0]:preferredAccess>=0?accessOrder.splice(preferredAccess,1)[0]:otherOrder.shift()||accessOrder.shift();current[next]=id;}
   let rating=score(plan,current,studentsById,eligibleIds,config).cost;
   for(let step=0;step<650;step++){
    const movable=Object.keys(current).filter(s=>!Object.hasOwn(fixed,s));
