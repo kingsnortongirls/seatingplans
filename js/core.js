@@ -268,6 +268,45 @@ export function defaultRoom(name='Standard 2-4-2') {
 }
 export function buildPreset(kind,name) {
  if(kind==='242')return defaultRoom(name||'Standard 2-4-2');
+ if(kind==='it1'){
+  // IT1 from the supplied Edulink room diagram: ten positions down the
+  // left computer bench, seven down the right, two banks of six in the
+  // centre, plus two at the top-right return. All 31 places count, even
+  // where the original screenshot showed an unoccupied computer.
+  const seats=[];
+  const add=(x,y,group)=>seats.push({id:uid(),label:String(seats.length+1),
+   x,y,rotation:0,priority:'normal',group});
+  [11,19,27,35,43,51,59,67,75,83].forEach(y=>add(8,y,'IT1-Left'));
+  [29,38,47,56,65,74,83].forEach(y=>add(92,y,'IT1-Right'));
+  [29,38,47,56,65,74].forEach(y=>{
+   add(40,y,'IT1-Middle-Left');
+   add(57,y,'IT1-Middle-Right');
+  });
+  add(79,11,'IT1-Upper-Right');
+  add(92,19,'IT1-Upper-Right');
+  return {id:uid(),name:name||'IT1',kind:'it1',preset:'it1',seats,
+   teacher:{x:76,y:91},board:'back'};
+ }
+ if(kind==='rm29'){
+  // RM29 from the supplied Edulink diagram: six single places down the
+  // left wall, five down the right, and nine paired desks (three columns
+  // by three rows, two pupils at each desk). 29 usable positions.
+  // The board is not labelled in the screenshot, so its top-side
+  // position is an editable starting assumption, NOT a confirmed fact.
+  const seats=[];
+  const add=(x,y,group)=>seats.push({id:uid(),label:String(seats.length+1),
+   x,y,rotation:0,priority:'normal',group});
+  [19,32,45,58,71,84].forEach(y=>add(8,y,'RM29-Left'));
+  [19,32,45,58,71].forEach(y=>add(92,y,'RM29-Right'));
+  [19,36,53].forEach((y,row)=>{
+   [[23,31],[45,53],[67,75]].forEach(([x1,x2],column)=>{
+    const group='RM29-Pair-'+(row+1)+'-'+(column+1);
+    add(x1,y,group);add(x2,y,group);
+   });
+  });
+  return {id:uid(),name:name||'RM29',kind:'rm29',preset:'rm29',seats,
+   teacher:{x:49,y:89},board:'front'};
+ }
  if(kind==='it3'){
   // IT3 horseshoe: 8 across the upper wall, 7 down each side,
   // and 12 at the central island (six on each long edge). 34 total.
@@ -317,6 +356,19 @@ export function buildPreset(kind,name) {
  if(kind==='u')for(let i=0;i<32;i++){const ang=Math.PI+(Math.PI*i/31);add(50+40*Math.cos(ang),48+34*Math.sin(ang),0,i,'U'+Math.floor(i/4));}
  return {id:uid(),name:name||({pairs:'Paired desks',groups:'Grouped tables',u:'U shape'}[kind]||'Custom room'),preset:kind,seats,teacher:{x:78,y:7},board:'front'};
 }
+// Populate newly introduced built-in room templates in older encrypted
+// sessions. Never overwrite an existing named or edited school room.
+export function addMissingSchoolRooms(rooms){
+ if(!Array.isArray(rooms))throw new Error('Room collection is not an array.');
+ let added=0;
+ for(const kind of ['it1','rm29']){
+  if(rooms.some(room=>String(room.preset||room.kind||'').toLowerCase()===kind||
+   String(room.name||'').trim().toLowerCase()===kind))continue;
+  rooms.push(buildPreset(kind,kind==='it1'?'IT1':'RM29'));added++;
+ }
+ return added;
+}
+
 export function newPlan(classId,room,label) {
  return {id:uid(),classId,roomId:room.id,name:label||'Autumn 1',created:new Date().toISOString(),
   layout:clone({kind:room.kind||'',seats:room.seats,teacher:room.teacher,board:room.board}),assignments:{},locks:[],
