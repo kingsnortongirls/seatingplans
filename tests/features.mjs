@@ -82,12 +82,12 @@ assert.equal(buildPreset('it2','IT2').seats.length,33);
 // Screenshots supply room geometry only. Never copy real pupil names or images.
 const it1=buildPreset('it1');
 assert.equal(it1.name,'IT1');
-assert.equal(it1.seats.length,31,'IT1 has 31 usable computer positions');
+assert.equal(it1.seats.length,33,'IT1 has 33 usable computer positions');
 assert.equal(it1.board,'back','IT1 whiteboard is along the bottom edge');
 assert.equal(it1.seats.filter(s=>s.group==='IT1-Left').length,10);
-assert.equal(it1.seats.filter(s=>s.group==='IT1-Right').length,7);
+assert.equal(it1.seats.filter(s=>s.group==='IT1-Right').length,8);
 assert.equal(it1.seats.filter(s=>s.group.startsWith('IT1-Middle')).length,12);
-assert.equal(it1.seats.filter(s=>s.group==='IT1-Upper-Right').length,2);
+assert.equal(it1.seats.filter(s=>s.group==='IT1-Upper-Right').length,3);
 const rm29=buildPreset('rm29');
 assert.equal(rm29.name,'RM29');
 assert.equal(rm29.seats.length,29,'RM29 has 29 desk positions');
