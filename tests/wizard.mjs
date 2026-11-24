@@ -30,7 +30,7 @@ const testHooks=[
  "data.students=[{id:'a1',name:'Example One',classId:'A',active:true,send:'K',pp:'No',opp:{adaptations:['Seat at front'],adjustments:[],about:[]}},",
  "{id:'a2',name:'Example Two',classId:'A',active:true,send:'N',pp:'No'},",
  "{id:'b1',name:'Example Three',classId:'B',active:true,send:'N',pp:'No',opp:{adaptations:[],adjustments:['Seat near the teacher'],about:[]}}];",
- "classId='A';view='setup';setupActive=true;setupPhase='next';render();},",
+ "classId='A';view='setup';setupActive=true;setupPhase='import';render();},",
  'action,modal:()=>modal,clearModal:()=>{modal=null},',
  'state:()=>({view,classId,setupPhase,setupActive,wizardPlanIndex,confirmed:[...wizardConfirmed],verified:wizardVerified}),',
  "html:()=>document.querySelector('#app').innerHTML,",
@@ -43,15 +43,12 @@ const ui=new Function('document','window','crypto','queueMicrotask','setTimeout'
  core+'\n'+app+'\n'+testHooks)(document,window,webcrypto,fn=>micro.push(fn),()=>1,()=>{},()=>1,()=>{},()=>true);
 const flush=()=>{for(let i=0;micro.length&&i<100;i++)micro.shift()()};
 ui.setup();
-assert.match(ui.html(),/I'm finished adding classes/);
+assert.match(ui.html(),/Import all your teaching groups/);
 ui.action('wizard-finish');flush();
-assert.equal(ui.state().setupPhase,'classes-backup');
-assert.equal(ui.modal().title,'Create classes backup');
+assert.equal(ui.state().setupPhase,'opp');
+assert.equal(ui.modal(),null);
 assert.match(ui.html(),/Continue to seating plans/);
-assert.match(ui.html(),/disabled aria-disabled="true"/);
 ui.action('wizard-begin-seating');
-assert.equal(ui.state().setupPhase,'classes-backup','Cannot bypass first backup verification');
-ui.verify('classes-backup');ui.clearModal();ui.action('wizard-begin-seating');
 assert.equal(ui.state().setupPhase,'plan');
 assert.equal(ui.state().classId,'A');
 assert.match(ui.html(),/STEP 1 · CHOOSE A ROOM/);
@@ -74,8 +71,8 @@ ui.action('wizard-confirm-plan');ui.modal().onSave({has:()=>true});ui.clearModal
 assert.equal(ui.state().setupPhase,'final-backup');
 assert.equal(ui.modal().title,'Create final seating plans backup');
 ui.action('wizard-complete');
-assert.equal(ui.state().setupPhase,'final-backup','Cannot bypass final backup verification');
-ui.verify('final-backup');ui.clearModal();ui.action('wizard-complete');
+assert.equal(ui.state().setupPhase,'final-backup','Cannot finish before encrypted download');
+ui.verify('downloaded');ui.clearModal();ui.action('wizard-complete');
 assert.equal(ui.state().setupPhase,'complete');
 assert.match(ui.html(),/Ready to teach/);
-console.log('Guided imports, two verified backup gates and all class plans: PASS');
+console.log('Bulk guided imports, single backup gate and all class plans: PASS');
