@@ -1,6 +1,6 @@
 import { strict as assert } from 'node:assert';
 import { readEdulink,buildEdulinkReview,gradeGap,gradeValue,assessmentGap,assessmentHistory,
-  classQuality,isLateRecord,isBehaviourRecord,defaultRoom,buildPreset,newPlan,placeStudent,autoSeat,oppSeatingHints,auditRules } from '../js/core.js';
+  classQuality,isLateRecord,isBehaviourRecord,defaultRoom,buildPreset,addMissingSchoolRooms,newPlan,placeStudent,autoSeat,oppSeatingHints,auditRules } from '../js/core.js';
 
 // Entirely synthetic. Never add actual school information to tests.
 const csv=[
@@ -79,6 +79,45 @@ const room=buildPreset('it3','IT3');
 assert.equal(room.seats.length,34);
 assert.equal(room.seats.filter(s=>s.priority==='access').length,8);
 assert.equal(buildPreset('it2','IT2').seats.length,33);
+// Screenshots supply room geometry only. Never copy real pupil names or images.
+const it1=buildPreset('it1');
+assert.equal(it1.name,'IT1');
+assert.equal(it1.seats.length,31,'IT1 has 31 usable computer positions');
+assert.equal(it1.board,'back','IT1 whiteboard is along the bottom edge');
+assert.equal(it1.seats.filter(s=>s.group==='IT1-Left').length,10);
+assert.equal(it1.seats.filter(s=>s.group==='IT1-Right').length,7);
+assert.equal(it1.seats.filter(s=>s.group.startsWith('IT1-Middle')).length,12);
+assert.equal(it1.seats.filter(s=>s.group==='IT1-Upper-Right').length,2);
+const rm29=buildPreset('rm29');
+assert.equal(rm29.name,'RM29');
+assert.equal(rm29.seats.length,29,'RM29 has 29 desk positions');
+assert.equal(rm29.seats.filter(s=>s.group==='RM29-Left').length,6);
+assert.equal(rm29.seats.filter(s=>s.group==='RM29-Right').length,5);
+assert.equal(rm29.seats.filter(s=>s.group.startsWith('RM29-Pair-')).length,18);
+assert.equal(new Set(rm29.seats.filter(s=>s.group.startsWith('RM29-Pair-')).map(s=>s.group)).size,9);
+for(const schoolRoom of [it1,rm29]){
+ assert.ok(schoolRoom.seats.every(s=>s.priority==='normal'),
+  'The screenshots do not justify defaulting any pupil-related accessibility priority');
+ assert.equal(new Set(schoolRoom.seats.map(s=>s.id)).size,schoolRoom.seats.length);
+ assert.equal(new Set(schoolRoom.seats.map(s=>s.label)).size,schoolRoom.seats.length);
+ assert.ok(schoolRoom.seats.every(s=>s.x>=5&&s.x<=95&&s.y>=8&&s.y<=91));
+ assert.equal(newPlan('example',schoolRoom,'Synthetic plan').layout.seats.length,schoolRoom.seats.length);
+ const demo=Array.from({length:12},(_,i)=>({id:'sample'+i,name:'Synthetic '+i,send:'N',pp:'No'}));
+ const proposal=autoSeat(newPlan('class',schoolRoom,'Plan'),demo);
+ assert.equal(Object.keys(proposal.assignments).length,demo.length);
+}
+const oldSavedRooms=[defaultRoom(),buildPreset('it2'),buildPreset('it3')];
+const oldIDs=oldSavedRooms.map(r=>r.id);
+assert.equal(addMissingSchoolRooms(oldSavedRooms),2,'Both new rooms arrive in older backups');
+assert.deepEqual(oldSavedRooms.slice(0,3).map(r=>r.id),oldIDs,'Existing rooms are never replaced');
+assert.equal(addMissingSchoolRooms(oldSavedRooms),0,'Migration is idempotent');
+assert.equal(oldSavedRooms.filter(r=>r.name==='IT1').length,1);
+assert.equal(oldSavedRooms.filter(r=>r.name==='RM29').length,1);
+const namedCustom=[{id:'custom',name:'RM29',seats:[],board:'back'}];
+assert.equal(addMissingSchoolRooms(namedCustom),1,'An existing named room is preserved');
+assert.equal(namedCustom[0].id,'custom');
+assert.equal(namedCustom.filter(r=>r.name==='RM29').length,1);
+
 const plan=newPlan('class',room,'Version');
 const a=room.seats[0].id,b=room.seats[1].id;
 plan.assignments={[a]:'a',[b]:'b'};
