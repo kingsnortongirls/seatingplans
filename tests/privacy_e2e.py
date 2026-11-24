@@ -94,7 +94,7 @@ async def main():
             await page.get_by_role('button',name='Continue to seating plans').click()
             # Guide seating creation through all imported classes with the existing
             # rules-aware generator and a deliberate confirmation per class.
-            for expected,room,places in [('8X/CS','IT1',31),('9X/CS','RM29',29)]:
+            for expected,room,places in [('8X/CS','IT1',33),('9X/CS','RM29',29)]:
                 assert await page.get_by_text(expected,exact=True).count()>=1
                 # Both new classroom presets must be directly selectable within
                 # the guided planner, not only from the Room Designer.
