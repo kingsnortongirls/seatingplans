@@ -75,9 +75,51 @@ async def main():
             assert await page.get_by_text('Year 9',exact=False).count()>=1
             await page.get_by_role('button',name='Skip OPP import for now').click()
             await page.get_by_role('button',name="I'm finished · Create backup").click()
-            assert await page.get_by_text('Create encrypted backup').count()>=1
-            await page.locator('#modalRoot [data-action=close-modal]').click()
-            await page.locator('#nav [data-view=dashboard]').click()
+            assert await page.get_by_text('Create classes backup').count()>=1
+            # Downloading is not verification. Confirm that the first checkpoint
+            # blocks proceeding until the downloaded encrypted file is checked.
+            assert await page.get_by_role('button',name='Continue to seating plans').is_disabled()
+            await page.locator('#modalForm input[name=password]').fill('SyntheticPass123')
+            await page.locator('#modalForm input[name=confirm]').fill('SyntheticPass123')
+            async with page.expect_download() as first_export:
+                await page.locator('#modalForm button[type=submit]').click()
+            first_file=await first_export.value
+            assert first_file.suggested_filename.startswith('seating-classes-')
+            await page.get_by_role('button',name='Verify downloaded backup').click()
+            await page.locator('#verifyBackupFile').set_input_files(await first_file.path())
+            await page.locator('#modalForm input[name=password]').fill('SyntheticPass123')
+            await page.locator('#modalForm button[type=submit]').click()
+            assert await page.get_by_role('button',name='Continue to seating plans').is_enabled()
+            await page.get_by_role('button',name='Continue to seating plans').click()
+            # Guide seating creation through all imported classes with the existing
+            # rules-aware generator and a deliberate confirmation per class.
+            for expected in ['8X/CS','9X/CS']:
+                assert await page.get_by_text(expected,exact=True).count()>=1
+                await page.get_by_role('button',name='Create plan for this class').click()
+                await page.get_by_role('button',name='Preview and generate seats').click()
+                await page.get_by_role('button',name='Preview seating plan').click()
+                await page.get_by_role('button',name='Apply seating plan').click()
+                await page.get_by_role('button',name='Confirm this class plan').click()
+                # Only explicit warnings require acknowledgement.
+                checkbox=page.locator('#modalForm input[name=acknowledge]')
+                if await checkbox.count(): await checkbox.check()
+                await page.locator('#modalForm button[type=submit]').click()
+            assert await page.get_by_text('Create final seating plans backup').count()>=1
+            assert await page.get_by_role('button',name='Finish guided setup').is_disabled()
+            await page.locator('#modalForm input[name=password]').fill('SyntheticPass123')
+            await page.locator('#modalForm input[name=confirm]').fill('SyntheticPass123')
+            async with page.expect_download() as last_export:
+                await page.locator('#modalForm button[type=submit]').click()
+            last_file=await last_export.value
+            assert last_file.suggested_filename.startswith('seating-plans-finished-')
+            await page.get_by_role('button',name='Verify downloaded backup').click()
+            await page.locator('#verifyBackupFile').set_input_files(await last_file.path())
+            await page.locator('#modalForm input[name=password]').fill('SyntheticPass123')
+            await page.locator('#modalForm button[type=submit]').click()
+            assert await page.get_by_role('button',name='Finish guided setup').is_enabled()
+            await page.get_by_role('button',name='Finish guided setup').click()
+            assert await page.get_by_text('Ready to teach').count()>=1
+            await page.get_by_role('button',name='Return to dashboard').click()
             await page.get_by_role('button',name='Open',exact=True).first.click()
             await page.get_by_role('button',name='+ New version').click()
             await page.locator('#modalForm button[type=submit]').click()
