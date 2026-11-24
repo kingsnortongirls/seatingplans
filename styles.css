@@ -660,3 +660,41 @@
  }
  .canvas .seat[class*="grade-"]{padding-bottom:8px}
 }
+
+/* Lesson dashboard: prioritise the complete room, with compact teaching tools.
+   Container breakpoints follow available workspace width, not screen width. */
+@media screen {
+ .lesson-grid{grid-template-columns:minmax(0,1fr);gap:12px;container-type:inline-size}
+ .lesson-grid>.stage-card{min-width:0;overflow-x:auto;padding:14px}
+ .lesson-grid .canvas{width:100%;min-width:720px;min-height:660px;aspect-ratio:1.45}
+ .lesson-grid .canvas.it2,.lesson-grid .canvas.it3,.lesson-grid .canvas.rm29{min-height:740px}
+ .lesson-grid .canvas.it1{min-height:960px}
+ .lesson-grid .canvas .seat{min-height:58px;padding:3px 2px;gap:2px}
+ .lesson-grid .canvas .seat[class*="grade-"]{padding-bottom:6px}
+ .lesson-grid .canvas .seat strong{font-size:10px}
+ .lesson-grid .canvas .seat .seat-tags{gap:1px}
+ .lesson-grid .canvas .seat .seat-tag{font-size:7px;padding:1px 2px}
+ .lesson-grid .canvas .seat .seat-extra,.lesson-grid .canvas .seat .seat-meta{font-size:8px}
+ .lesson-grid .canvas .seat-tags:empty{display:none}
+ .lesson-side{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:10px}
+ .lesson-side>.card{padding:12px;min-width:0}
+ .lesson-side h2{margin:0 0 8px;font-size:15px}
+ .lesson-clock{gap:6px}
+ .lesson-clock:not(:fullscreen) .timer-digits{font-size:52px;letter-spacing:-2px}
+ .lesson-side .picker-stage{min-height:82px;padding:8px}
+ .lesson-side .picker-stage strong{font-size:21px}
+ .lesson-side .button-row{gap:5px;flex-wrap:wrap}
+ .lesson-side .btn{padding:7px 9px;min-height:32px;font-size:11px}
+ .lesson-side p{margin:7px 0}
+ .lesson-side input{min-height:32px;padding:6px 8px}
+ @media(min-width:1300px){
+  .lesson-grid{grid-template-columns:minmax(0,1fr) 270px}
+  .lesson-side{display:flex;flex-direction:column;position:sticky;top:12px}
+ }
+ /* If the viewport has a wide sidebar or a narrow content pane, prefer a
+    full-width seating plan over horizontally clipping the classroom. */
+ @media(max-width:1299px){
+  .lesson-grid>.stage-card{grid-row:2}
+  .lesson-side{grid-row:1}
+ }
+}
