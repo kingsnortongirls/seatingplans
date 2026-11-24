@@ -357,17 +357,57 @@ export function buildPreset(kind,name) {
  if(kind==='u')for(let i=0;i<32;i++){const ang=Math.PI+(Math.PI*i/31);add(50+40*Math.cos(ang),48+34*Math.sin(ang),0,i,'U'+Math.floor(i/4));}
  return {id:uid(),name:name||({pairs:'Paired desks',groups:'Grouped tables',u:'U shape'}[kind]||'Custom room'),preset:kind,seats,teacher:{x:78,y:7},board:'front'};
 }
-// Populate newly introduced built-in room templates in older encrypted
-// sessions. Never overwrite an existing named or edited school room.
-export function addMissingSchoolRooms(rooms){
+// The original IT1 diagram was incorrectly transcribed with only 31 seats.
+// Detect exactly that unmodified old preset, so encrypted backups can gain
+// the two missing positions without shifting any pupil or overwriting edits.
+function isOriginal31SeatIT1(layout){
+ if(!layout||layout.kind!=='it1'||layout.seats?.length!==31)return false;
+ const expected=[
+  ...[11,19,27,35,43,51,59,67,75,83].map(y=>[8,y,'IT1-Left']),
+  ...[29,38,47,56,65,74,83].map(y=>[92,y,'IT1-Right']),
+  ...[29,38,47,56,65,74].flatMap(y=>[
+   [40,y,'IT1-Middle-Left'],[57,y,'IT1-Middle-Right']
+  ]),
+  [79,11,'IT1-Upper-Right'],[92,19,'IT1-Upper-Right']
+ ];
+ return expected.every(([x,y,group],i)=>{
+  const seat=layout.seats[i];
+  return seat&&seat.x===x&&seat.y===y&&seat.group===group;
+ });
+}
+function extendOriginalIT1(layout,extraSeats){
+ if(extraSeats?.length===2)layout.seats.push(...extraSeats.map(seat=>clone(seat)));
+ else {
+  // Preserve the old desk identities and any assignments/locks. The new
+  // places can be fine-tuned in the room designer if the teacher wishes.
+  layout.seats.push(
+   {id:uid(),label:'32',x:92,y:91,rotation:0,priority:'normal',group:'IT1-Right'},
+   {id:uid(),label:'33',x:87,y:9,rotation:0,priority:'normal',group:'IT1-Upper-Right'}
+  );
+ }
+}
+// Ensure the current templates exist after restoring an old backup.
+// Add seats to unmodified legacy 31-seat IT1 rooms and their saved plans,
+// but never alter customised layouts or move existing pupil assignments.
+export function addMissingSchoolRooms(rooms,plans=[]){
  if(!Array.isArray(rooms))throw new Error('Room collection is not an array.');
- let added=0;
+ let changed=0;
  for(const kind of ['it1','rm29']){
   if(rooms.some(room=>String(room.preset||room.kind||'').toLowerCase()===kind||
    String(room.name||'').trim().toLowerCase()===kind))continue;
-  rooms.push(buildPreset(kind,kind==='it1'?'IT1':'RM29'));added++;
+  rooms.push(buildPreset(kind,kind==='it1'?'IT1':'RM29'));changed++;
  }
- return added;
+ for(const room of rooms){
+  if(!isOriginal31SeatIT1(room))continue;
+  extendOriginalIT1(room);changed++;
+ }
+ if(Array.isArray(plans))for(const plan of plans){
+  if(!isOriginal31SeatIT1(plan?.layout))continue;
+  const room=rooms.find(r=>r.id===plan.roomId);
+  const extra=room?.seats?.length===33&&room.kind==='it1'?room.seats.slice(-2):null;
+  extendOriginalIT1(plan.layout,extra);changed++;
+ }
+ return changed;
 }
 
 export function newPlan(classId,room,label) {
