@@ -48,13 +48,13 @@ async def main():
   year_zip.unlink(missing_ok=True)
   assert await page.get_by_role('button',name='Import next class').count()==1
   await page.get_by_role('button',name="I'm finished · Create backup").click()
-  # Some local set_content() contexts are not secure, so subtle crypto may be
-  # unavailable. The real-CSP localhost test verifies the full backup prompt.
+  # Guided setup now stops at the classes backup checkpoint. The real-CSP
+  # browser test verifies the file before moving on to the seating wizard.
+  assert await page.get_by_text('Save your classes and OPPs').count()>=1
+  assert await page.get_by_role('button',name='Continue to seating plans').is_disabled()
   if await page.evaluate('!!crypto.subtle'):
    assert await page.locator('#modalForm input[name=password]').count()==1
    await page.locator('#modalRoot [data-action=close-modal]').click()
-  else:
-   assert await page.get_by_text('Backup & restore').count()>=1
   await page.locator('#nav [data-view=dashboard]').click()
   await page.get_by_role('button',name='Open',exact=True).first.click()
   await page.get_by_role('button',name='+ New version').click()
