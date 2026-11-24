@@ -192,13 +192,13 @@ async def main():
             await page.locator('#modalForm input[name=date]').fill('2026-11-24')
             await page.locator('#modalForm button[type=submit]').click()
             await page.locator('#assessmentGrade').wait_for()
-            assert await page.get_by_text('Pupil 1 of 3').count()==1
+            assert await page.locator('.assessment-progress-caption strong').inner_text()=='Pupil 1 of 3'
             await page.locator('#assessmentGrade').fill('7')
             await page.locator('#assessmentGrade').press('Enter')
-            assert await page.get_by_text('Pupil 2 of 3').count()==1
+            assert await page.locator('.assessment-progress-caption strong').inner_text()=='Pupil 2 of 3'
             await page.locator('#assessmentGrade').fill('5')
             await page.locator('#assessmentGrade').press('Enter')
-            assert await page.get_by_text('Pupil 3 of 3').count()==1
+            assert await page.locator('.assessment-progress-caption strong').inner_text()=='Pupil 3 of 3'
             await page.get_by_role('button',name='Previous pupil').click()
             assert await page.locator('#assessmentGrade').input_value()=='5'
             await page.locator('#assessmentGrade').fill('6')
