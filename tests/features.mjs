@@ -118,6 +118,41 @@ assert.equal(addMissingSchoolRooms(namedCustom),1,'An existing named room is pre
 assert.equal(namedCustom[0].id,'custom');
 assert.equal(namedCustom.filter(r=>r.name==='RM29').length,1);
 
+// Simulate an encrypted backup created when IT1 was incorrectly 31 seats.
+// Migration must preserve all existing seat IDs, pupil assignments and locks.
+const legacyIT1=buildPreset('it1');
+const originalLeft=legacyIT1.seats.filter(s=>s.group==='IT1-Left');
+const originalRight=legacyIT1.seats.filter(s=>s.group==='IT1-Right').slice(0,7)
+ .map((seat,i)=>({...seat,y:[29,38,47,56,65,74,83][i]}));
+const originalMiddle=legacyIT1.seats.filter(s=>s.group.startsWith('IT1-Middle'));
+const originalTop=legacyIT1.seats.filter(s=>s.group==='IT1-Upper-Right');
+legacyIT1.seats=[...originalLeft,...originalRight,...originalMiddle,
+ {...originalTop[0],y:11},originalTop[2]].map((seat,i)=>({...seat,label:String(i+1)}));
+assert.equal(legacyIT1.seats.length,31);
+const legacyIDs=legacyIT1.seats.map(seat=>seat.id);
+const legacyPlan=newPlan('synthetic-class',legacyIT1,'Existing seating');
+legacyPlan.assignments={[legacyIT1.seats[0].id]:'example-learner'};
+legacyPlan.locks=[legacyIT1.seats[0].id];
+const beforeLegacyAssignments=structuredClone(legacyPlan.assignments);
+const legacyRooms=[legacyIT1,buildPreset('rm29')];
+assert.equal(addMissingSchoolRooms(legacyRooms,[legacyPlan]),2,
+ 'An unedited IT1 room and its saved plan should both gain two seats');
+assert.equal(legacyIT1.seats.length,33);
+assert.equal(legacyPlan.layout.seats.length,33);
+assert.deepEqual(legacyIT1.seats.slice(0,31).map(seat=>seat.id),legacyIDs);
+assert.deepEqual(legacyPlan.layout.seats.slice(0,31).map(seat=>seat.id),legacyIDs);
+assert.deepEqual(legacyPlan.layout.seats.slice(31).map(seat=>seat.id),
+ legacyIT1.seats.slice(31).map(seat=>seat.id));
+assert.deepEqual(legacyPlan.assignments,beforeLegacyAssignments);
+assert.deepEqual(legacyPlan.locks,[legacyIDs[0]]);
+assert.equal(addMissingSchoolRooms(legacyRooms,[legacyPlan]),0,'Upgrade is idempotent');
+const customisedLegacy=buildPreset('it1');
+customisedLegacy.seats=structuredClone(legacyIT1.seats.slice(0,31));
+customisedLegacy.seats[0].x=17;
+assert.equal(addMissingSchoolRooms([customisedLegacy,buildPreset('rm29')]),0);
+assert.equal(customisedLegacy.seats.length,31,
+ 'Do not automatically change a teacher-customised old room');
+
 const plan=newPlan('class',room,'Version');
 const a=room.seats[0].id,b=room.seats[1].id;
 plan.assignments={[a]:'a',[b]:'b'};
