@@ -286,7 +286,8 @@ export function buildPreset(kind,name) {
   add(79,9,'IT1-Upper-Right');
   add(87,9,'IT1-Upper-Right');
   add(92,19,'IT1-Upper-Right');
-  return {id:uid(),name:name||'IT1',kind:'it1',preset:'it1',seats,
+  applyIT1Priorities({seats});
+  return {id:uid(),name:name||'IT1',kind:'it1',preset:'it1',accessIT1Version:1,seats,
    teacher:{x:76,y:91},board:'back'};
  }
  if(kind==='rm29'){
@@ -408,6 +409,14 @@ function upgradeIT2Access(layout){
  if(new Set(layout.seats.map(s=>Number(s.label))).size!==33||layout.seats.some(s=>!Number.isInteger(Number(s.label))||Number(s.label)<1||Number(s.label)>33))return false;
  applyIT2Priorities(layout);layout.accessIT2Version=1;return true;
 }
+function applyIT1Priorities(layout){
+ for(const s of layout.seats){const n=Number(s.label);s.priority=n>=19&&n<=30?'access':n===31||n===32?'avoid':'normal';s.avoidIfPossible=false;}
+}
+function upgradeIT1Access(layout){
+ if(!layout||layout.kind!=='it1'||layout.accessIT1Version===1||layout.seats?.length!==33)return false;
+ if(new Set(layout.seats.map(s=>Number(s.label))).size!==33||layout.seats.some(s=>!Number.isInteger(Number(s.label))||Number(s.label)<1||Number(s.label)>33))return false;
+ applyIT1Priorities(layout);layout.accessIT1Version=1;return true;
+}
 export function addMissingSchoolRooms(rooms,plans=[]){
  if(!Array.isArray(rooms))throw new Error('Room collection is not an array.');
  let changed=0;
@@ -432,12 +441,14 @@ export function addMissingSchoolRooms(rooms,plans=[]){
    room.seats.slice(-2):null;
   extendOriginalIT1(plan.layout,extra);changed++;
  }
+ for(const room of rooms)if(upgradeIT1Access(room))changed++;
+ for(const plan of plans||[])if(upgradeIT1Access(plan.layout))changed++;
  return changed;
 }
 
 export function newPlan(classId,room,label) {
  return {id:uid(),classId,roomId:room.id,name:label||'Autumn 1',created:new Date().toISOString(),
-  layout:clone({kind:room.kind||'',access242Version:room.access242Version,accessIT3Version:room.accessIT3Version,accessIT2Version:room.accessIT2Version,seats:room.seats,teacher:room.teacher,board:room.board}),assignments:{},locks:[],
+  layout:clone({kind:room.kind||'',access242Version:room.access242Version,accessIT3Version:room.accessIT3Version,accessIT2Version:room.accessIT2Version,accessIT1Version:room.accessIT1Version,seats:room.seats,teacher:room.teacher,board:room.board}),assignments:{},locks:[],
   rules:[],accessPreference:{send:false,pp:false},generationOptions:{keepApart:true,keepLocked:true,mixed:false,front:true},notes:''};
 }
 // A teacher can explicitly opt into preferring accessible seating for SEND,
