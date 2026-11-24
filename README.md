@@ -10,20 +10,25 @@ A fully client-side seating plan and teaching toolkit designed for static hostin
 
 The embedded browser extractor includes internal size/complexity limits and avoids inferring names or needs from unreadable image content.
 
-## Start-up and class setup wizard
+## Complete guided setup: imports, two backups and all seating plans
 
-Every **fresh page load** offers **Restore my backup** or **Set up my classes**. The site does not remember visits or automatically retain pupil records.
+Every **fresh page load** offers **Restore my backup** or **Set up my classes**. No pupil data or wizard progress is retained in browser storage.
 
-1. **Restore my backup:** choose a downloaded encrypted `.seatingplan` file and enter its original password to continue. A successful restore bypasses new-class setup.
-2. **Import classes:** start the wizard, choose an Edulink CSV and confirm the pupil-matching review. Multiple teaching groups from one CSV are supported.
-3. **Import year-group OPPs:** immediately after confirmation, the wizard advances to a dedicated One Page Profile step and **automatically scrolls to it**. The on-screen path is **Staffshare → Inclusion → Inclusion Matters → One Page Profiles**. Select a **year-group ZIP containing PDF and/or Word files**, or select **multiple .pdf and .docx documents** together, or drag them onto the upload area. The imported file names and OPP contents are not transmitted or persisted by the website. The parser attempts exact pupil-name matches; ambiguous or unmatched profiles require manual confirmation.
-4. **Next class or finish:** after the OPPs are processed, choose **Import next class**, **Import more OPPs** or **I'm finished · Create backup**. Repeat the process for each year group. You can **Skip OPP import for now** without losing the classes already imported. Profiles can be added later.
-5. **Back up:** when you finish, the app opens the encrypted backup password form immediately. After downloading, choose **Verify downloaded backup** to check the file can be decrypted and that it matches the current session. A download alone cannot guarantee a working backup.
-6. **Exit guided setup:** use the standard dashboard without following the wizard. The dashboard also allows the wizard to be reopened.
+1. **Import a class:** choose an Edulink CSV, review matches and explicitly confirm.
+2. **Import its One Page Profiles:** the wizard scrolls to the OPP step. The folder reference is **Staffshare → Inclusion → Inclusion Matters → One Page Profiles**. Select multiple Word `.docx` or searchable PDF `.pdf` files, a mixed ZIP, or drag them onto the upload area. Ambiguous pupil matches require teacher confirmation. The OPP step can be skipped.
+3. **Repeat for each class:** after each import, choose **Import next class**, **Import more OPPs**, or **Done importing · Back up classes**. Multiple teaching groups in one CSV are supported.
+4. **Back up the imported classes:** an encrypted backup form opens, with a filename beginning `seating-classes-`. The wizard requires you to **verify the downloaded file against the current session** before continuing. Downloading alone does not count as a successful backup.
+5. **Set up seating plans class by class:** the wizard displays every imported class and its progress. For each one, select a room template (or existing plan), review OPP-derived seating suggestions, approve applicable rules, preview the rules-aware generator, and inspect/adjust the final positions on the normal seating plan screen. An easy **Return to guided setup** button takes you back. Before confirming, the wizard reports unseated pupils, unmet required rules, advisory conflicts and unreviewed OPP suggestions. Any outstanding concerns require explicit acknowledgement.
+6. **Confirm each class:** the wizard automatically advances to the next group. You may revisit a previous class, and edits to that class invalidate its previous confirmation.
+7. **Back up the completed seating plans:** after the last class is confirmed, the wizard opens the final encrypted backup form. The filename begins `seating-plans-finished-`. **Verify this second downloaded file** before selecting **Finish guided setup**.
+8. **Return to teaching:** the completed view links to Seating Plans and the dashboard. Both files should be stored only in a school-approved secure location. Create and verify an updated backup after subsequent changes.
 
-Staffshare is a folder-location instruction, **not an automatic network connection**. The teacher must select the files using their school's file picker or drag and drop. The wizard identifies year groups from common class names such as `7X/CS` and `9A/CS`, but imports OPPs against actual pupil identities rather than guessing from the folder name.
+The two exports are full encrypted session backups taken at different points. The first protects imported class/OPP data before room design, while the second also captures all the final seating assignments and rules. Both use the existing AES-256-GCM protection and minimum 8-character password. They are **not automatically stored**.
 
-There is no persistent onboarding state, server account, login, browser storage or automatic backup. Cancelling an import or backup does **not** delete current work. Closing or refreshing the browser without a verified, safely stored encrypted backup risks permanent loss of current-session changes.
+If you restore a verified classes backup on a subsequent visit, the dashboard has **Guided seating plans** to resume from the seating stage without reimporting the pupils. Staff can also leave the wizard and use the rest of the application normally.
+
+Staffshare is a folder-location instruction, **not an automatic network connection**. No document, class, OPP, seating plan or backup is uploaded or sent to a service. There is no persistent onboarding state, server account or automatic saving. Cancelling an import or backup does **not** delete your current work. Closing or refreshing the browser without storing verified encrypted backups risks losing that session.
+
 
 ## Data protection and deployment
 
