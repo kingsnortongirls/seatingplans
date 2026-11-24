@@ -77,6 +77,8 @@ assert.equal(runtime.grades().length,0,'Whole class save is a single Undo operat
 runtime.go('assessments');
 runtime.action('new-class-assessment');
 runtime.modal().onSave(fd('Synthetic unit test','2026-11-24'));flush();
+// The synthetic DOM must mimic the new blank input after a full render.
+element('#assessmentGrade').value='';
 runtime.action('assessment-jump',{id:'b'});
 element('#assessmentGrade').value='8';
 runtime.action('assessment-next');
@@ -88,6 +90,7 @@ runtime.go('assessments');
 runtime.action('new-class-assessment');
 runtime.modal().onSave(fd('Synthetic unit test','2026-11-24'));flush();
 assert.equal(runtime.check('b'),'8','Existing matching assessments are prefilled');
+element('#assessmentGrade').value='';
 runtime.action('assessment-jump',{id:'b'});
 element('#assessmentGrade').value='9';
 runtime.action('assessment-next');
