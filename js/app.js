@@ -2,7 +2,7 @@ import {uid,clone,clean,esc,short,nameKey,isoDate,readEdulink,buildEdulinkReview
 
 // Everything below exists in memory only. No localStorage, cookies, IndexedDB, API calls or telemetry.
 const initial=()=>({schema:1,classes:[],students:[],rooms:[defaultRoom(),buildPreset('it3','IT3'),buildPreset('it2','IT2')],plans:[],records:[],assessments:[],questioned:{},questioningLog:[],yearRollovers:[],pendingOPPs:[],categories:['Homework not submitted','Truancy','Lack of effort','Disrespect','Missing equipment','Disruption','Not following instructions','Incomplete classwork','Other']});
-let data=initial(),view='welcome',setupActive=false,setupPhase='import',setupLastImport='',setupLastOppImport='',setupYearGroups=[],classId='',roomId=data.rooms[0].id,planId='',selectedStudent='',selectedSeat='',seatMoveSource='',placingStudentId='',selectedRecord='',dirty=false,history=[],future=[],profileTab='support',searchTerm='',recordFilter='all',printMode='teacher',groupResult=[],lastPicked='',pickerExclude=true,absent=new Set(),layoutMode='move',pendingOPPs=[],oppSummary='',importSummary='',dragState=null,homeworkSession=null,projectorWindow=null,backupVerifyStatus='',hideIndicators=false,privacyLocked=false,lessonTimer={remaining:300,running:false,endsAt:0},lessonTimerHandle=null,lastPickerState='',pickerSpin=null,contextLongPress=null,suppressSeatClick=false,recordPeriod=30;
+let data=initial(),view='welcome',setupActive=false,setupPhase='import',setupLastImport='',setupLastOppImport='',setupYearGroups=[],wizardClassIds=[],wizardPlanIndex=0,wizardConfirmed=[],wizardVerified='',classId='',roomId=data.rooms[0].id,planId='',selectedStudent='',selectedSeat='',seatMoveSource='',placingStudentId='',selectedRecord='',dirty=false,history=[],future=[],profileTab='support',searchTerm='',recordFilter='all',printMode='teacher',groupResult=[],lastPicked='',pickerExclude=true,absent=new Set(),layoutMode='move',pendingOPPs=[],oppSummary='',importSummary='',dragState=null,homeworkSession=null,projectorWindow=null,backupVerifyStatus='',hideIndicators=false,privacyLocked=false,lessonTimer={remaining:300,running:false,endsAt:0},lessonTimerHandle=null,lastPickerState='',pickerSpin=null,contextLongPress=null,suppressSeatClick=false,recordPeriod=30;
 const $=sel=>document.querySelector(sel), $$=sel=>[...document.querySelectorAll(sel)];
 const currentClass=()=>data.classes.find(c=>c.id===classId);
 const currentRoom=()=>data.rooms.find(r=>r.id===roomId)||data.rooms[0];
@@ -37,11 +37,11 @@ const card=(content,title='')=>`<section class="card">${title?`<h2>${esc(title)}
 const stat=(num,title,desc)=>`<div class="metric"><strong>${esc(num)}</strong><small>${esc(title)}</small><span>${esc(desc)}</span></div>`;
 const fmtDate=d=>{if(!d)return '';const x=new Date(`${d.slice(0,10)}T12:00:00`);return Number.isNaN(x.getTime())?esc(d):x.toLocaleDateString('en-GB');};
 function notice(message,type=''){const div=document.createElement('div');div.className='toast '+type;div.textContent=message;$('#toastRoot').replaceChildren(div);setTimeout(()=>{if(div.isConnected)div.remove()},4200);}
-function mutation(fn){backupVerifyStatus='';history.push(clone(data));if(history.length>60)history.shift();future=[];fn();dirty=true;render();}
-function undo(){if(!history.length)return;backupVerifyStatus='';future.push(clone(data));data=history.pop();reconcile();dirty=true;render();notice('Change undone.');}
-function redo(){if(!future.length)return;backupVerifyStatus='';history.push(clone(data));data=future.pop();reconcile();dirty=true;render();notice('Change restored.');}
+function mutation(fn){backupVerifyStatus='';wizardVerified='';if(setupActive&&setupPhase==='plan')wizardConfirmed=wizardConfirmed.filter(id=>id!==classId);history.push(clone(data));if(history.length>60)history.shift();future=[];fn();dirty=true;render();}
+function undo(){if(!history.length)return;backupVerifyStatus='';wizardVerified='';if(setupActive&&setupPhase==='plan')wizardConfirmed=wizardConfirmed.filter(id=>id!==classId);future.push(clone(data));data=history.pop();reconcile();dirty=true;render();notice('Change undone.');}
+function redo(){if(!future.length)return;backupVerifyStatus='';wizardVerified='';if(setupActive&&setupPhase==='plan')wizardConfirmed=wizardConfirmed.filter(id=>id!==classId);history.push(clone(data));data=future.pop();reconcile();dirty=true;render();notice('Change restored.');}
 function reconcile(){if(!Array.isArray(data.assessments))data.assessments=[];if(!Array.isArray(data.questioningLog))data.questioningLog=[];if(!Array.isArray(data.yearRollovers))data.yearRollovers=[];if(!Array.isArray(data.pendingOPPs))data.pendingOPPs=[];if(!data.rooms.length)data.rooms=[defaultRoom()];if(!data.rooms.some(r=>r.id===roomId))roomId=data.rooms[0].id;if(!data.classes.some(c=>c.id===classId))classId=data.classes[0]?.id||'';if(!data.plans.some(p=>p.id===planId&&p.classId===classId))planId=data.plans.find(p=>p.classId===classId)?.id||'';}
-function goto(next){seatMoveSource='';placingStudentId='';if(!['tools','lesson'].includes(next))stopPickerSpin();if(setupActive&&next!=='setup'){setupActive=false;setupPhase='import';}view=next;render();window.scrollTo({top:0,behavior:'instant'});}
+function goto(next){seatMoveSource='';placingStudentId='';if(!['tools','lesson'].includes(next))stopPickerSpin();if(setupActive&&next!=='setup'&&!(setupPhase==='plan'&&next==='seating')){setupActive=false;setupPhase='import';}view=next;render();window.scrollTo({top:0,behavior:'instant'});}
 function setClass(id){seatMoveSource='';placingStudentId='';stopPickerSpin();if(homeworkSession&&homeworkSession.classId!==id){if(!confirm('Cancel unfinished homework marking and switch classes? No homework records have been written.'))return;homeworkSession=null;}classId=id;planId=data.plans.find(p=>p.classId===id)?.id||'';selectedStudent='';selectedSeat='';absent.clear();groupResult=[];lastPicked='';}
 function render(){reconcile();$$('#nav [data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view===view));$('#breadcrumbs').textContent=({welcome:'Start here',setup:'Set up classes',dashboard:'Your workspace',seating:'Seating plans',lesson:'Lesson mode',assessments:'Assessment history',overview:'Class overview',rooms:'Classroom designer',profiles:'Pupil profiles',records:'Teacher records',tools:'Teaching tools',backup:'Backup & restore'})[view];$('#saveIndicator').textContent=dirty?'● Changes not backed up':'Session only';$('#undoButton').disabled=history.length===0;$('#redoButton').disabled=future.length===0;
  const views={welcome:welcome,setup:setup,dashboard:dashboard,seating:seating,lesson:lesson,assessments:assessmentsView,overview:classOverview,rooms:rooms,profiles:profiles,records:records,tools:tools,backup:backup};$('#privacyToggle').querySelector('span').textContent=privacyLocked?'Unlock screen':'Privacy lock';$('#app').innerHTML=privacyLocked?'<div class="privacy-cover"><h1>Screen concealed</h1><p>Pupil and staff information is temporarily hidden. Select Unlock screen to return to your workspace.</p></div>':views[view]();}
@@ -87,7 +87,115 @@ function wizardScrollToStep(id){
  section.scrollIntoView?.({behavior:reduced?'auto':'smooth',block:'start'});
  section.focus?.({preventScroll:true});
 }
+
+function wizardOrderedClasses(){
+ return wizardClassIds.map(id=>data.classes.find(c=>c.id===id)).filter(Boolean);
+}
+function wizardSwitchClass(index){
+ const classes=wizardOrderedClasses();
+ if(!classes[index])return;
+ wizardPlanIndex=index;
+ setClass(classes[index].id);
+ render();
+}
+function wizardStartPlanPhase(){
+ wizardClassIds=data.classes.filter(c=>data.students.some(s=>s.classId===c.id&&s.active!==false))
+  .sort((a,b)=>a.name.localeCompare(b.name,'en-GB')).map(c=>c.id);
+ wizardPlanIndex=0;wizardConfirmed=[];wizardVerified='';
+ if(!wizardClassIds.length){notice('Import at least one class with pupils before creating seating plans.','error');return;}
+ setupPhase='plan';wizardSwitchClass(0);
+}
+function wizardStageBackup(){
+ const isFinal=setupPhase==='final-backup',isVerified=wizardVerified===setupPhase;
+ const pending=data.pendingOPPs?.length||0;
+ return heading(isFinal?'Final step: save your completed seating plans':'Save your classes and OPPs',
+  isFinal?'Every imported class has been reviewed. Save the full seating arrangements and records.':
+  'Before you arrange pupils, protect the imported class lists and One Page Profiles.')+
+ '<div class="wizard-stage-progress" aria-label="Setup progress"><span>1 · Import classes and OPPs ✓</span><span class="'+(!isFinal?'current':'')+'">2 · Classes backup</span><span class="'+(isFinal?'current':'')+'">3 · Seating plans</span><span>4 · Final backup</span></div>'+
+ '<section class="card wizard-stage-card"><span class="onboarding-step-label">'+(isFinal?'FINAL BACKUP':'CHECKPOINT BACKUP')+'</span>'+
+ '<h2>'+(isFinal?'Back up your finished seating plans':'Back up your class information')+'</h2>'+
+ '<p>'+(isFinal?'The encrypted file includes all class lists, OPPs, seating rules and confirmed seating assignments.':
+ 'This encrypted file preserves the imported pupils and OPPs even if you need to restart seating plan design later.')+'</p>'+
+ (pending&&!isFinal?'<div class="alert"><strong>'+pending+' OPP(s) still need identity confirmation.</strong> Resolve these before your backup where possible. '+button('Review OPP matches','review-opps','btn btn-small')+'</div>':'')+
+ '<div class="wizard-stage-actions">'+button(isFinal?'Create final seating plans backup':'Create classes backup','wizard-create-backup','btn btn-primary')+
+ button('Verify downloaded backup','wizard-verify-backup','btn')+'</div>'+
+ (isVerified?'<div class="notice wizard-verified"><strong>✓ Backup verified against this session.</strong> Keep the encrypted file in school-approved storage.</div>':
+ '<div class="notice"><strong>Verification required:</strong> after downloading, select the same file under Verify downloaded backup and enter its password. A download alone cannot confirm the file is usable.</div>')+
+ '<div class="wizard-stage-actions">'+
+ (isFinal?button('Finish guided setup','wizard-complete','btn btn-primary',isVerified?'':'disabled aria-disabled="true"'):
+ button('Continue to seating plans','wizard-begin-seating','btn btn-primary',isVerified?'':'disabled aria-disabled="true"'))+
+ (isFinal?'':button('Back to class imports','wizard-back-imports','btn'))+
+ '</div></section>';
+}
+function wizardStagePlans(){
+ const classes=wizardOrderedClasses(),cls=classes[wizardPlanIndex];
+ if(!cls)return heading('Guided seating plans','Your class list has changed. Return to class setup.')+
+ button('Restart class setup','wizard-start','btn btn-primary');
+ const active=data.students.filter(s=>s.classId===cls.id&&s.active!==false);
+ const p=currentPlan();
+ const assigned=p?new Set(Object.values(p.assignments).filter(Boolean)).size:0;
+ const remaining=Math.max(0,active.length-assigned);
+ const oppPupils=active.filter(s=>s.opp).length;
+ const suggestions=p?active.reduce((count,s)=>count+oppSeatingHints(s.opp)
+   .filter(h=>!h.reviewOnly&&!p.rules.some(r=>r.type==='priority'&&r.a===s.id&&r.mode===h.mode)).length,0):0;
+ const report=p?auditRules(p,active):null,confirmed=wizardConfirmed.includes(cls.id);
+ const versions=data.plans.filter(x=>x.classId===cls.id);
+ const order=classes.map((c,i)=>'<button type="button" class="wizard-class-step '+(i===wizardPlanIndex?'active':'')+
+  (wizardConfirmed.includes(c.id)?' done':'')+'" data-action="wizard-open-class" data-id="'+esc(c.id)+'">'+
+  '<span>'+(wizardConfirmed.includes(c.id)?'✓':i+1)+'</span><strong>'+esc(c.name)+'</strong></button>').join('');
+ const roomChoices=data.rooms.map(r=>({value:r.id,label:r.name+' ('+r.seats.length+' seats)'}));
+ const roomSelect=choose('wizardRoom',roomChoices,roomId);
+ const header=heading('Guided seating plans','Class '+(wizardPlanIndex+1)+' of '+classes.length+
+  '. Confirm each room, check support requirements, generate seats and review the arrangement.');
+ const overview='<div class="wizard-class-selector" aria-label="Classes to complete">'+order+'</div>'+
+ '<div class="grid four">'+stat(active.length,'Pupils','In this class')+
+ stat(oppPupils,'With OPPs','Imported profiles')+
+ stat(p?.rules.length||0,'Seating rules','Approved for this plan')+
+ stat(assigned,'Pupils seated','Of '+active.length)+'</div>';
+ const createPlan='<section class="card wizard-stage-card"><span class="onboarding-step-label">STEP 1 · CHOOSE A ROOM</span>'+
+ '<h2>'+esc(cls.name)+'</h2>'+
+ (p?'<div class="notice"><strong>Existing seating plan:</strong> '+esc(p.name)+' · '+p.layout.seats.length+' seats. '+
+ 'You can use it, review another version, or create a new one.</div>'+
+ '<label>Plan version'+choose('wizardVersion',versions.map(x=>({value:x.id,label:x.name})),p.id,'data-action="wizard-select-plan"')+'</label>':
+ '<p>No plan exists yet for this class. Choose a suitable room to create one.</p>')+
+ '<div class="wizard-room-choice"><label>Room template'+roomSelect+'</label>'+
+ button(p?'Create another plan version':'Create plan for this class','wizard-new-plan','btn btn-primary')+'</div>'+
+ (p?'<p class="muted tiny">The current plan can be adjusted without losing the imported pupil list or OPPs.</p>':'')+
+ '</section>';
+ const review=p?'<section class="card wizard-stage-card"><span class="onboarding-step-label">STEP 2 · REVIEW SEATING GUIDANCE</span>'+
+ '<h2>Check individual seating requirements</h2>'+
+ '<p>'+suggestions+' new explicit OPP seating suggestion(s) awaiting review. Existing rules and locks are included in the generator.</p>'+
+ (suggestions?'<div class="notice">OPP suggestions are not applied automatically. Review and approve any that are suitable for this room.</div>':'')+
+ '<div class="wizard-stage-actions">'+button('Review OPP seating suggestions'+(suggestions?' ('+suggestions+')':''),'opp-seating-prompts','btn btn-primary')+
+ button('Review seating rules','seating-rules','btn')+'</div></section>':'';
+ const arrange=p?'<section class="card wizard-stage-card"><span class="onboarding-step-label">STEP 3 · GENERATE AND ADJUST</span>'+
+ '<h2>Build a seating plan</h2><p>Generate a proposed plan that considers your approved OPP preferences, seating rules, fixed seats and room layout. Preview any conflicts before applying.</p>'+
+ '<div class="wizard-stage-actions">'+button('Preview and generate seats','auto-seat','btn btn-primary')+
+ button('View and adjust seating plan','wizard-adjust-plan','btn')+'</div>'+
+ '<p class="muted tiny">'+assigned+' pupil(s) currently seated'+(remaining?' · '+remaining+' still unseated':' · all pupils seated')+'.</p>'+
+ (report&&(report.required.length||report.advisory.length)?
+ '<div class="alert">'+report.required.length+' mandatory rule(s) and '+report.advisory.length+
+ ' preferences are unmet. Review these before confirming.</div>':'')+'</section>':'';
+ const finish='<section class="card wizard-stage-card"><span class="onboarding-step-label">STEP 4 · CONFIRM THIS CLASS</span>'+
+ '<h2>Is '+esc(cls.name)+' ready?</h2><p>Inspect the seating plan, make any manual changes, then confirm this class. You can return to previously reviewed classes.</p>'+
+ (confirmed?'<div class="notice"><strong>✓ This class has been confirmed.</strong></div>':'')+
+ '<div class="wizard-stage-actions">'+button(confirmed?'Review confirmation again':'Confirm this class plan','wizard-confirm-plan','btn btn-primary',p&&assigned?'':'disabled aria-disabled="true"')+
+ button('Back to class imports','wizard-back-imports','btn')+'</div></section>';
+ return header+overview+createPlan+review+arrange+finish+
+ '<p class="muted tiny">Class confirmations are temporary until you create and verify the final encrypted backup. Changes to an already confirmed class require it to be confirmed again.</p>';
+}
+function wizardCompleteView(){
+ return heading('Guided setup complete','Your class data and final seating plans have both been backed up and verified.')+
+ '<div class="card wizard-stage-card"><h2>Ready to teach</h2>'+
+ '<p>Keep both encrypted backups safely stored in a school-approved location. Create another backup after any future seating changes.</p>'+
+ button('Open seating plans','wizard-open-finished','btn btn-primary')+
+ button('Return to dashboard','wizard-exit','btn')+'</div>';
+}
+
 function setup(){
+ if(['classes-backup','final-backup'].includes(setupPhase))return wizardStageBackup();
+ if(setupPhase==='plan')return wizardStagePlans();
+ if(setupPhase==='complete')return wizardCompleteView();
  const names=data.classes.slice().sort((a,b)=>a.name.localeCompare(b.name,'en-GB'));
  const count=names.length,isOpp=setupPhase==='opp',isNext=setupPhase==='next';
  const headingText=isOpp?'Next: import year-group OPPs':isNext?'Ready for your next class?':'Set up your teaching groups';
