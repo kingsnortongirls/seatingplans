@@ -572,3 +572,64 @@
   -webkit-print-color-adjust:exact;print-color-adjust:exact
  }
 }
+
+/* Guided whole-class assessments: one grade at a time, deliberate final save. */
+.assessment-progress{height:11px;background:#e1ebf5;border-radius:99px;overflow:hidden;margin:18px 0 7px;border:1px solid #cddfea}
+.assessment-progress>span{display:block;height:100%;background:linear-gradient(90deg,#2772ad,#4db9a1);transition:width .18s ease;border-radius:inherit}
+.assessment-progress-caption{display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin:0 0 20px;color:#355a78;font-size:13px;flex-wrap:wrap}
+.assessment-progress-caption>span{font-size:12px;color:#677f94}
+.assessment-entry-layout{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(230px,1fr);gap:18px;align-items:start}
+.assessment-entry-main{padding:clamp(20px,3vw,35px);min-height:325px}
+.assessment-entry-main h2{font-size:clamp(23px,3vw,34px);font-weight:800;color:#183a56;line-height:1.2;margin:11px 0 14px}
+.assessment-entry-main>p{max-width:600px;line-height:1.6;color:#526e82}
+.assessment-pupil-context{display:flex;flex-wrap:wrap;gap:9px 15px;margin:12px 0 23px}
+.assessment-pupil-context span{background:#edf4fb;border:1px solid #dce8f2;border-radius:9px;padding:9px 12px;color:#3d5971;font-size:12px}
+.assessment-pupil-context strong{font-size:14px;color:#16446b}
+.assessment-grade-label{display:block!important;color:#193f5c;font-size:15px;font-weight:800;margin-bottom:10px}
+.assessment-grade-input{display:block;width:min(100%,300px);height:88px;border:2px solid #8cb2d2;border-radius:14px;background:white;color:#163956;
+ text-align:center;font-size:clamp(32px,5vw,45px);font-weight:850;letter-spacing:1px;outline:none;transition:border-color .15s,box-shadow .15s}
+.assessment-grade-input:focus{border-color:#236eae;box-shadow:0 0 0 4px #c5e3fa}
+.assessment-entry-main kbd{font-size:12px;font-weight:700;background:#e8f1f9;border:1px solid #cbdceb;border-radius:5px;padding:2px 5px}
+.assessment-navigation{display:flex;flex-wrap:wrap;gap:10px;margin-top:23px;align-items:center}
+.assessment-navigation .btn{min-height:46px;padding:11px 16px;white-space:normal}
+.assessment-navigation .btn[disabled]{opacity:.45;cursor:default}
+.assessment-entry-list{padding:16px 13px;position:sticky;top:85px;max-height:min(72vh,750px);display:flex;flex-direction:column;min-height:0}
+.assessment-entry-list h3{font-size:16px;color:#244e6d;margin:0 0 6px}
+.assessment-entry-list .muted{margin:0 0 11px}
+.assessment-pupil-list{display:flex;flex-direction:column;overflow:auto;overscroll-behavior:contain;gap:4px;min-height:0}
+.assessment-pupil-choice{display:flex;align-items:center;min-height:38px;gap:9px;border:1px solid transparent;background:transparent;padding:7px 9px;
+ color:#375570;border-radius:9px;cursor:pointer;text-align:left;width:100%;font-size:12px;line-height:1.35}
+.assessment-pupil-choice span:nth-child(2){flex:1;min-width:0;overflow-wrap:anywhere}
+.assessment-pupil-choice strong{font-size:11px;font-weight:850;color:#73899c;white-space:nowrap}
+.assessment-pupil-choice .assessment-marked{color:#176640}
+.assessment-pupil-choice .assessment-ungraded{color:#866b4c}
+.assessment-pupil-choice:hover{background:#f0f7fd;border-color:#d0e1ef}
+.assessment-pupil-choice.active{border-color:#8fbee1;background:#e7f3ff;color:#1b5077}
+.assessment-pupil-choice:focus-visible{outline:3px solid #7fb3eb;outline-offset:2px}
+.assessment-pupil-number{display:grid;place-items:center;width:24px;height:24px;border-radius:7px;background:#edf3f8;font-size:10px;font-weight:800;color:#42617a;flex:none}
+.assessment-pupil-choice.active .assessment-pupil-number{background:#2b76ae;color:white}
+.assessment-finish-card .grid{margin:24px 0 8px}
+.assessment-finish-card .assessment-navigation .btn-primary{flex:1}
+.assessment-exit{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:15px 0 25px;flex-wrap:wrap}
+.assessment-exit p{max-width:620px;margin:0}
+@media(max-width:900px){
+ .assessment-entry-layout{grid-template-columns:minmax(0,1fr)}
+ .assessment-entry-list{position:static;max-height:300px}
+ .assessment-pupil-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;overflow:auto}
+ .assessment-entry-main{min-height:300px}
+}
+@media(max-width:560px){
+ .assessment-entry-main{padding:19px 16px;min-height:unset}
+ .assessment-entry-main h2{font-size:25px}
+ .assessment-grade-input{width:100%;max-width:100%;height:75px}
+ .assessment-navigation{gap:7px}
+ .assessment-navigation .btn{min-height:48px;padding:11px;font-size:12px;flex:1 1 auto}
+ .assessment-navigation .btn-primary{flex:2 1 44%}
+ .assessment-pupil-list{grid-template-columns:1fr}
+ .assessment-entry-list{max-height:275px}
+ .assessment-progress-caption{font-size:12px}
+ .assessment-exit .btn{width:100%}
+}
+@media print{
+ .assessment-entry-layout,.assessment-exit,.assessment-progress,.assessment-progress-caption{display:none!important}
+}
