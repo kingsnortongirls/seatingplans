@@ -246,7 +246,7 @@ function setup(){
  <div class="onboarding-footer"><p>Information stays in temporary browser memory. Download and verify an encrypted backup when finished.</p>${button('Exit guided setup','wizard-exit','btn')}</div>`;
 }
 
-function dashboard(){const pupils=currentStudents();return heading('Welcome to Seating Plans','An offline-in-the-browser teacher workspace. Student information is never transmitted.',button('↑ Import Edulink CSV','import-csv','btn btn-primary')+button('Guided setup','wizard-start','btn')+button('↑ Import OPPs','import-opp','btn')+(data.pendingOPPs?.length?button('Review OPP matches ('+data.pendingOPPs.length+')','review-opps','btn'):''))+ 
+function dashboard(){const pupils=currentStudents();return heading('Welcome to Seating Plans','An offline-in-the-browser teacher workspace. Student information is never transmitted.',button('↑ Import Edulink CSV','import-csv','btn btn-primary')+button('Guided setup','wizard-start','btn')+(data.classes.length?button('Guided seating plans','wizard-start-seating','btn'):'')+button('↑ Import OPPs','import-opp','btn')+(data.pendingOPPs?.length?button('Review OPP matches ('+data.pendingOPPs.length+')','review-opps','btn'):''))+ 
  `<div class="callout privacy"><strong>Private session.</strong> Files are processed in this browser only. There is no account, server database, analytics or automatic saving. Export an encrypted backup before closing or refreshing this page.</div>`+
  `<section class="workflow-strip no-print" aria-label="Quick workflow"><div class="workflow-strip-title"><strong>Quick workflow</strong><small>Import → Plan → Teach → Back up</small></div><div class="workflow-steps">${[
   ['1','Set up classes','wizard-start','file'],
@@ -786,8 +786,88 @@ function action(id,attrs={}){try{switch(id){
  case 'wizard-import-opp':$('#oppFiles').click();break;
  case 'wizard-more-opp':setupPhase='opp';setupLastOppImport='';render();queueMicrotask(()=>wizardScrollToStep('setup-opp-step'));break;
  case 'wizard-skip-opp':setupPhase='next';setupLastOppImport='OPP import skipped. You can add profiles later.';render();queueMicrotask(()=>wizardScrollToStep('setup-next-step'));break;
- case 'wizard-skip':case 'wizard-exit':setupActive=false;setupPhase='import';setupLastOppImport='';setupYearGroups=[];goto('dashboard');break;
- case 'wizard-finish':setupActive=false;setupPhase='import';setupLastOppImport='';setupYearGroups=[];goto('backup');queueMicrotask(()=>backupModal());break;
+ case 'wizard-skip':case 'wizard-exit':setupActive=false;setupPhase='import';setupLastOppImport='';setupYearGroups=[];wizardClassIds=[];wizardPlanIndex=0;wizardConfirmed=[];wizardVerified='';goto('dashboard');break;
+ case 'wizard-finish':{
+   if(!data.classes.some(c=>data.students.some(s=>s.classId===c.id&&s.active!==false))){
+    notice('Import at least one class before backing up.','error');break;
+   }
+   setupPhase='classes-backup';wizardVerified='';render();
+   queueMicrotask(()=>backupModal('classes'));break;
+ }
+ case 'wizard-create-backup':if(['classes-backup','final-backup'].includes(setupPhase))backupModal(setupPhase==='classes-backup'?'classes':'finished');break;
+ case 'wizard-verify-backup':$('#verifyBackupFile').click();break;
+ case 'wizard-begin-seating':{
+  if(setupPhase!=='classes-backup'||wizardVerified!=='classes-backup'){notice('Verify the downloaded classes backup before continuing.','error');break;}
+  wizardStartPlanPhase();break;
+ }
+ case 'wizard-start-seating':{
+  if(!data.classes.length){notice('Import or restore classes first.','error');break;}
+  setupActive=true;wizardStartPlanPhase();break;
+ }
+ case 'wizard-back-imports':setupPhase='next';wizardVerified='';render();break;
+ case 'wizard-new-plan':{
+  if(setupPhase!=='plan'||!setupActive)break;
+  const id=wizardClassIds[wizardPlanIndex];
+  if(!id||classId!==id){notice('Choose a class in guided setup first.','error');break;}
+  const chosen=$('#app [name="wizardRoom"]')?.value||roomId;
+  const room=data.rooms.find(r=>r.id===chosen);
+  if(!room){notice('Choose a valid classroom layout.','error');break;}
+  const active=currentStudents().length;
+  if(room.seats.length<active&&!confirm('This room has '+room.seats.length+' seats but '+active+' pupils. Continue with some pupils unseated?'))break;
+  mutation(()=>{
+   const plan=newPlan(id,room,'Guided seating plan '+(data.plans.filter(p=>p.classId===id).length+1));
+   data.plans.push(plan);planId=plan.id;roomId=room.id;
+  });
+  notice('Room selected. Review OPP preferences and seating rules next.','success');break;
+ }
+ case 'wizard-adjust-plan':{
+  if(setupActive&&setupPhase==='plan'&&currentPlan())goto('seating');
+  break;
+ }
+ case 'wizard-return-plan':if(setupActive&&setupPhase==='plan')goto('setup');break;
+ case 'wizard-open-class':{
+  if(!setupActive||setupPhase!=='plan')break;
+  const idx=wizardClassIds.indexOf(attrs.id);
+  if(idx>=0)wizardSwitchClass(idx);
+  break;
+ }
+ case 'wizard-confirm-plan':{
+  if(!setupActive||setupPhase!=='plan')break;
+  const p=currentPlan(),students=currentStudents();
+  if(!p){notice('Create or select a seating plan for this class first.','error');break;}
+  const assigned=new Set(Object.values(p.assignments).filter(id=>students.some(s=>s.id===id)));
+  if(!assigned.size){notice('Generate or manually assign pupils before confirming this plan.','error');break;}
+  const missing=students.filter(s=>!assigned.has(s.id));
+  const audit=auditRules(p,students);
+  const oppPending=students.reduce((total,student)=>total+oppSeatingHints(student.opp)
+   .filter(h=>!h.reviewOnly&&!p.rules.some(r=>r.type==='priority'&&r.a===student.id&&r.mode===h.mode)).length,0);
+  const hasWarnings=!!(missing.length||audit.required.length||audit.advisory.length||oppPending);
+  const body='<p><strong>'+esc(currentClass()?.name||'Class')+':</strong> '+assigned.size+' of '+students.length+' pupil(s) seated.</p>'+
+   '<div class="'+(hasWarnings?'alert':'notice')+'"><strong>'+audit.required.length+' required rule(s) unmet; '+
+   audit.advisory.length+' preferences unmet; '+oppPending+' unreviewed OPP suggestions.</strong>'+
+   (missing.length?'<p>'+missing.length+' pupil(s) unseated: '+esc(missing.map(s=>s.name).join(', '))+'</p>':'')+
+   (!hasWarnings?'<p>All checked seating requirements have been satisfied.</p>':'')+'</div>'+
+   (hasWarnings?'<label class="check"><input type="checkbox" name="acknowledge"> I have checked these warnings and approve this arrangement as it stands.</label>':'')+
+   '<p class="muted tiny">You can still revise this plan. If you change a confirmed class you will need to confirm it again before the final backup.</p>';
+  openModal('Confirm class seating plan',body,fd=>{
+   if(hasWarnings&&!fd.has('acknowledge'))throw Error('Tick the acknowledgement after reviewing all remaining concerns.');
+   if(!wizardConfirmed.includes(classId))wizardConfirmed.push(classId);
+   const next=wizardClassIds.findIndex(id=>!wizardConfirmed.includes(id));
+   if(next>=0){
+    wizardSwitchClass(next);
+    notice('Class plan confirmed. Continue with the next teaching group.','success');
+   }else{
+    setupPhase='final-backup';wizardVerified='';render();
+    queueMicrotask(()=>backupModal('finished'));
+   }
+  },'Confirm and continue');
+  break;
+ }
+ case 'wizard-complete':{
+  if(setupPhase!=='final-backup'||wizardVerified!=='final-backup'){notice('Verify the final seating plans backup before finishing.','error');break;}
+  setupPhase='complete';render();break;
+ }
+ case 'wizard-open-finished':setupActive=false;setupPhase='import';goto('seating');break;
  case 'import-csv':$('#csvFile').click();break;
  case 'import-opp':$('#oppFiles').click();break;case 'review-opps':reviewPendingOPPs();break;
  case 'go-rooms':goto('rooms');break;case 'go-backup':goto('backup');break;
@@ -855,7 +935,7 @@ function action(id,attrs={}){try{switch(id){
  case 'restore-backup':$('#backupFile').click();break;
  case 'verify-backup':$('#verifyBackupFile').click();break;
  case 'export-rooms':download(JSON.stringify({format:'SEATING-EMPTY-ROOMS',version:1,rooms:data.rooms},null,2),'room-layouts.json','application/json');notice('Room templates exported without student information.','success');break;
- case 'clear-session':{if(confirm('Clear all pupils, OPPs, notes, records and plans from memory? Export a backup first if needed.')){stopPickerSpin();homeworkSession=null;if(projectorWindow&&!projectorWindow.closed)projectorWindow.close();projectorWindow=null;data=initial();history=[];future=[];dirty=false;classId='';planId='';roomId=data.rooms[0].id;selectedStudent='';selectedSeat='';absent.clear();setupActive=false;setupPhase='import';setupLastImport='';setupLastOppImport='';setupYearGroups=[];goto('welcome');notice('Session cleared.','success');}break;}
+ case 'clear-session':{if(confirm('Clear all pupils, OPPs, notes, records and plans from memory? Export a backup first if needed.')){stopPickerSpin();homeworkSession=null;if(projectorWindow&&!projectorWindow.closed)projectorWindow.close();projectorWindow=null;data=initial();history=[];future=[];dirty=false;classId='';planId='';roomId=data.rooms[0].id;selectedStudent='';selectedSeat='';absent.clear();setupActive=false;setupPhase='import';setupLastImport='';setupLastOppImport='';setupYearGroups=[];wizardClassIds=[];wizardPlanIndex=0;wizardConfirmed=[];wizardVerified='';goto('welcome');notice('Session cleared.','success');}break;}
  } }catch(e){console.error(e);notice(e.message,'error');}}
 function compareVersions(){const p=currentPlan(),others=data.plans.filter(x=>x.classId===classId&&x.id!==planId);if(!p||!others.length){notice('Create a second version to compare.');return;}openModal('Compare seating plan versions',`<p class="muted">Compare against the current version: <strong>${esc(p.name)}</strong>.</p><label>Other version${choose('other',others.map(x=>({value:x.id,label:x.name})))}</label>`,fd=>{const other=data.plans.find(x=>x.id===fd.get('other'));const reverse=x=>Object.fromEntries(Object.entries(x.assignments).map(([seat,id])=>[id,x.layout.seats.find(s=>s.id===seat)?.label||'Unknown seat']));const a=reverse(p),b=reverse(other);const moved=currentStudents().filter(s=>a[s.id]!==b[s.id]);queueMicrotask(()=>openModal('Version comparison',`<p>${esc(p.name)} compared with ${esc(other.name)}: <strong>${moved.length} pupils moved or unseated</strong>.</p><div class="list-scroll">${moved.map(s=>`<div class="list-card"><strong>${esc(s.name)}</strong><small>${esc(b[s.id]||'Unseated')} → ${esc(a[s.id]||'Unseated')}</small></div>`).join('')||'<p>No changes.</p>'}</div>`,()=>{} ,'Close'));});}
 function startHomeworkSession(){
@@ -1107,7 +1187,7 @@ function recordModal(type='homework',editId=''){
 }
 
 function download(content,name,mime){const blob=new Blob([content],{type:mime});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),15000);}
-function backupModal(){if(!crypto.subtle){notice('Encrypted backups require a secure (HTTPS) browser context.','error');return;}openModal('Create encrypted backup',`<div class="callout privacy">Creates one encrypted file containing all your session data, including private OPP details. Use a strong, unique password of at least 8 characters.</div><label>Backup password<input name="password" type="password" required minlength="8" autocomplete="new-password"></label><label>Repeat password<input name="confirm" type="password" required minlength="8" autocomplete="new-password"></label>`,async fd=>{const pass=String(fd.get('password'));if(pass.length<8||pass!==fd.get('confirm'))throw new Error('Passwords must match and be at least 8 characters.');const encrypted=await encryptBackup(data,pass);download(encrypted,`seating-plans-${isoDate()}.seatingplan`,'application/octet-stream');render();notice('Encrypted download requested. Verify the saved file before closing this session.','success');});}
+function backupModal(kind=''){if(!crypto.subtle){notice('Encrypted backups require a secure (HTTPS) browser context.','error');return;}openModal(kind==='classes'?'Create classes backup':kind==='finished'?'Create final seating plans backup':'Create encrypted backup',`<div class="callout privacy">Creates one encrypted file containing all your session data, including private OPP details. Use a strong, unique password of at least 8 characters.</div><label>Backup password<input name="password" type="password" required minlength="8" autocomplete="new-password"></label><label>Repeat password<input name="confirm" type="password" required minlength="8" autocomplete="new-password"></label>`,async fd=>{const pass=String(fd.get('password'));if(pass.length<8||pass!==fd.get('confirm'))throw new Error('Passwords must match and be at least 8 characters.');const encrypted=await encryptBackup(data,pass);if(kind)wizardVerified='';download(encrypted,kind==='classes'?`seating-classes-${isoDate()}.seatingplan`:kind==='finished'?`seating-plans-finished-${isoDate()}.seatingplan`:`seating-plans-${isoDate()}.seatingplan`,'application/octet-stream');render();notice('Encrypted download requested. Verify the saved file before closing this session.','success');});}
 async function importCSV(files){
  if(!files.length)return;
  const incoming=[],diagnostics=[];
@@ -1240,7 +1320,7 @@ $('#backupFile').addEventListener('change',async e=>{
   openModal('Restore encrypted backup',`<p class="muted">Enter the password for this encrypted file. Restoring will replace the current session.</p><label>Backup password<input type="password" name="password" required autocomplete="off"></label><div class="alert">Export a new backup first if you need to preserve unbacked changes.</div>`,async fd=>{
    const restored=validateBackup(await decryptBackup(content,String(fd.get('password'))));
    if((dirty||data.students.length||data.assessments.length||data.records.length)&&!confirm('Replace the current session? Changes not backed up will be discarded.'))return;
-   stopPickerSpin();homeworkSession=null;if(projectorWindow&&!projectorWindow.closed)projectorWindow.close();projectorWindow=null;setupActive=false;setupPhase='import';setupLastImport='';setupLastOppImport='';setupYearGroups=[];view='dashboard';data=restored;history=[];future=[];dirty=false;classId=data.classes[0]?.id||'';roomId=data.rooms[0]?.id||'';planId=data.plans.find(p=>p.classId===classId)?.id||'';selectedStudent='';selectedSeat='';absent.clear();render();notice('Encrypted session restored locally.','success');
+   stopPickerSpin();homeworkSession=null;if(projectorWindow&&!projectorWindow.closed)projectorWindow.close();projectorWindow=null;setupActive=false;setupPhase='import';setupLastImport='';setupLastOppImport='';setupYearGroups=[];wizardClassIds=[];wizardPlanIndex=0;wizardConfirmed=[];wizardVerified='';view='dashboard';data=restored;history=[];future=[];dirty=false;classId=data.classes[0]?.id||'';roomId=data.rooms[0]?.id||'';planId=data.plans.find(p=>p.classId===classId)?.id||'';selectedStudent='';selectedSeat='';absent.clear();render();notice('Encrypted session restored locally.','success');
   },'Decrypt and restore');
  }catch(err){notice(err.message,'error');}
 });
@@ -1257,7 +1337,10 @@ $('#verifyBackupFile').addEventListener('change',async e=>{
    backupVerifyStatus=exact?
      'Verified: the file decrypts correctly and contains the exact current session. Store it in an approved secure location.':
      'Verified: the file decrypts correctly and is structurally valid, but it differs from this session. It may be an older backup.';
-   if(exact)dirty=false;
+   if(exact){
+    dirty=false;
+    if(setupActive&&['classes-backup','final-backup'].includes(setupPhase))wizardVerified=setupPhase;
+   }else if(setupActive)wizardVerified='';
    render();notice(backupVerifyStatus,exact?'success':'');
   },'Decrypt and verify');
  }catch(err){backupVerifyStatus='Verification failed: '+err.message;notice(backupVerifyStatus,'error');}
