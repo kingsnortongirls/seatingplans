@@ -68,7 +68,7 @@ function welcome(){
    <section class="onboarding-card">
     <span class="onboarding-symbol" aria-hidden="true">▦</span>
     <h2>Set up my classes</h2>
-    <p><strong>Starting fresh?</strong> Import an Edulink marksheet, review the pupils, and repeat for each teaching group. A backup prompt appears when you finish.</p>
+    <p><strong>Starting fresh?</strong> Import all your Edulink marksheets together, then all OPPs, arrange each class and save one encrypted backup.</p>
     ${button('Start class setup','wizard-start','btn btn-primary onboarding-main-action')}
    </section>
   </div>
@@ -109,26 +109,13 @@ function wizardStartPlanPhase(){
  setupPhase='plan';wizardSwitchClass(0);
 }
 function wizardStageBackup(){
- const isFinal=setupPhase==='final-backup',isVerified=wizardVerified===setupPhase;
- const pending=data.pendingOPPs?.length||0;
- return heading(isFinal?'Final step: save your completed seating plans':'Save your classes and OPPs',
-  isFinal?'Every imported class has been reviewed. Save the full seating arrangements and records.':
-  'Before you arrange pupils, protect the imported class lists and One Page Profiles.')+
- '<div class="wizard-stage-progress" aria-label="Setup progress"><span>1 · Import classes and OPPs ✓</span><span class="'+(!isFinal?'current':'')+'">2 · Classes backup'+(isFinal?' ✓':'')+'</span><span>3 · Seating plans'+(isFinal?' ✓':'')+'</span><span class="'+(isFinal?'current':'')+'">4 · Final backup</span></div>'+
- '<section class="card wizard-stage-card"><span class="onboarding-step-label">'+(isFinal?'FINAL BACKUP':'CHECKPOINT BACKUP')+'</span>'+
- '<h2>'+(isFinal?'Back up your finished seating plans':'Back up your class information')+'</h2>'+
- '<p>'+(isFinal?'The encrypted file includes all class lists, OPPs, seating rules and confirmed seating assignments.':
- 'This encrypted file preserves the imported pupils and OPPs even if you need to restart seating plan design later.')+'</p>'+
- (pending&&!isFinal?'<div class="alert"><strong>'+pending+' OPP(s) still need identity confirmation.</strong> Resolve these before your backup where possible. '+button('Review OPP matches','review-opps','btn btn-small')+'</div>':'')+
- '<div class="wizard-stage-actions">'+button(isFinal?'Create final seating plans backup':'Create classes backup','wizard-create-backup','btn btn-primary')+
- button('Verify downloaded backup','wizard-verify-backup','btn')+'</div>'+
- (isVerified?'<div class="notice wizard-verified"><strong>✓ Backup verified against this session.</strong> Keep the encrypted file in school-approved storage.</div>':
- '<div class="notice"><strong>Verification required:</strong> after downloading, select the same file under Verify downloaded backup and enter its password. A download alone cannot confirm the file is usable.</div>')+
- '<div class="wizard-stage-actions">'+
- (isFinal?button('Finish guided setup','wizard-complete','btn btn-primary',isVerified?'':'disabled aria-disabled="true"'):
- button('Continue to seating plans','wizard-begin-seating','btn btn-primary',isVerified?'':'disabled aria-disabled="true"'))+
- (isFinal?'':button('Back to class imports','wizard-back-imports','btn'))+
- '</div></section>';
+ const verified=wizardVerified==='final-backup',downloaded=verified||wizardVerified==='downloaded';
+ return heading('Final step: save your completed seating plans','Save all class lists, OPPs, seating rules and plans in one encrypted file.')+
+ '<div class="wizard-stage-progress"><span>1 · Classes ✓</span><span>2 · OPPs ✓</span><span>3 · Seating plans ✓</span><span class="current">4 · Save</span></div>'+
+ '<section class="card wizard-stage-card"><h2>Save and encrypt</h2><p>Choose a password and download your complete backup. Keep it in school-approved storage.</p>'+
+ '<div class="wizard-stage-actions">'+button('Save encrypted backup','wizard-create-backup','btn btn-primary')+button('Verify saved file (optional)','wizard-verify-backup','btn')+'</div>'+
+ (verified?'<div class="notice">✓ Saved file verified against this session.</div>':downloaded?'<div class="notice">Encrypted file generated and download requested. Check that it appears in your Downloads before closing. Verification is optional.</div>':'<div class="alert">Your work is only in temporary memory until you save.</div>')+
+ '<div class="wizard-stage-actions">'+button('Finish guided setup','wizard-complete','btn btn-primary',downloaded?'':'disabled aria-disabled="true"')+'</div></section>';
 }
 function wizardStagePlans(){
  const classes=wizardOrderedClasses(),cls=classes[wizardPlanIndex];
@@ -150,7 +137,7 @@ function wizardStagePlans(){
  const roomSelect=choose('wizardRoom',roomChoices,roomId);
  const header=heading('Guided seating plans','Class '+(wizardPlanIndex+1)+' of '+classes.length+
   '. Confirm each room, check support requirements, generate seats and review the arrangement.')+
- '<div class="wizard-stage-progress"><span>1 · Import classes and OPPs ✓</span><span>2 · Classes backup ✓</span><span class="current">3 · Seating plans</span><span>4 · Final backup</span></div>';
+ '<div class="wizard-stage-progress"><span>1 · Classes ✓</span><span>2 · OPPs ✓</span><span class="current">3 · Seating plans</span><span>4 · Save</span></div>';
  const overview='<div class="wizard-class-selector" aria-label="Classes to complete">'+order+'</div>'+
  '<div class="grid four">'+stat(active.length,'Pupils','In this class')+
  stat(oppPupils,'With OPPs','Imported profiles')+
@@ -186,12 +173,12 @@ function wizardStagePlans(){
  '<div class="wizard-stage-actions">'+button(confirmed?'Review confirmation again':'Confirm this class plan','wizard-confirm-plan','btn btn-primary',p&&assigned?'':'disabled aria-disabled="true"')+
  button('Back to class imports','wizard-back-imports','btn')+'</div></section>';
  return header+overview+createPlan+review+arrange+finish+
- '<p class="muted tiny">Class confirmations are temporary until you create and verify the final encrypted backup. Changes to an already confirmed class require it to be confirmed again.</p>';
+ '<p class="muted tiny">Class confirmations are temporary until you save the final encrypted backup. Changes to an already confirmed class require it to be confirmed again.</p>';
 }
 function wizardCompleteView(){
- return heading('Guided setup complete','Your class data and final seating plans have both been backed up and verified.')+
+ return heading('Guided setup complete','Your complete encrypted backup has been generated.')+
  '<div class="card wizard-stage-card"><h2>Ready to teach</h2>'+
- '<p>Keep both encrypted backups safely stored in a school-approved location. Create another backup after any future seating changes.</p>'+
+ '<p>Check your downloaded backup and keep it safely stored in a school-approved location. Create another backup after any future seating changes.</p>'+
  button('Open seating plans','wizard-open-finished','btn btn-primary')+
  button('Return to dashboard','wizard-exit','btn')+'</div>';
 }
@@ -201,53 +188,16 @@ function setup(){
  if(setupPhase==='plan')return wizardStagePlans();
  if(setupPhase==='complete')return wizardCompleteView();
  const names=data.classes.slice().sort((a,b)=>a.name.localeCompare(b.name,'en-GB'));
- const count=names.length,isOpp=setupPhase==='opp',isNext=setupPhase==='next';
- const headingText=isOpp?'Next: import year-group OPPs':isNext?'Ready for your next class?':'Set up your teaching groups';
- const subtitle=isOpp?'Add the One Page Profiles for the year group(s) you have imported.':
- isNext?'Your OPPs have been processed. Add another class or finish with an encrypted backup.':
- 'Choose an Edulink marksheet. You will review pupil matches before importing support profiles.';
- const classes=card(names.length?names.map(cls=>`<div class="list-card"><div><strong>${esc(cls.name)}</strong><small>${data.students.filter(p=>p.classId===cls.id&&p.active!==false).length} pupil(s)</small></div></div>`).join(''):'<p class="muted">No classes imported yet.</p>','Classes in this session');
- const years=setupYearGroups.length?setupYearGroups.join(', '):'your imported year group(s)';
- const oppStep=`<section id="setup-opp-step" class="onboarding-opp-step" tabindex="-1" aria-labelledby="setup-opp-heading">
- <span class="onboarding-step-label">STEP 2 · ONE PAGE PROFILES</span>
- <h2 id="setup-opp-heading">Import OPPs for ${esc(years)}</h2>
- <p>Find your year-group profiles in:</p>
- <div class="onboarding-folder-path" role="note"><strong>Staffshare</strong><span>›</span><strong>Inclusion</strong><span>›</span><strong>Inclusion Matters</strong><span>›</span><strong>One Page Profiles</strong></div>
- <div class="onboarding-file-types">
- <div><strong>Option A · ZIP file</strong><small>Select a year-group ZIP containing Word and/or PDF profiles.</small></div>
- <div><strong>Option B · Multiple PDF / Word files</strong><small>Select several .pdf and .docx files together.</small></div></div>
- <div class="onboarding-file-drop" data-opp-drop="true">
- <span class="onboarding-symbol" aria-hidden="true">▤</span>
- <p>Drag a ZIP or multiple PDF/Word profiles here, or browse your files.</p>
- ${button('Choose PDF, Word or ZIP OPP files','wizard-import-opp','btn btn-primary onboarding-main-action')}
- <small>Files are processed only in this browser. Pupil names are matched carefully; ambiguous matches need confirmation.</small>
- </div>
- <div class="onboarding-opp-actions">${button('Skip OPP import for now','wizard-skip-opp','btn')}</div>
- </section>`;
- const next=`<div class="onboarding-grid onboarding-grid-next" id="setup-next-step">
- <section class="onboarding-card"><span class="onboarding-symbol" aria-hidden="true">＋</span>
- <h2>Add your next class</h2><p>Import another Edulink CSV, then add the OPPs for that year group.</p>
- ${button('Import next class','wizard-import-next','btn btn-primary onboarding-main-action')}
- ${button('Import more OPPs','wizard-more-opp','btn')}</section>
- <section class="onboarding-card onboarding-finish"><span class="onboarding-symbol" aria-hidden="true">✓</span>
- <h2>I'm finished adding classes</h2><p>Create an encrypted backup now, then verify the downloaded file.</p>
- ${button("Done importing · Back up classes",'wizard-finish','btn btn-primary onboarding-main-action')}</section></div>`;
- const first=`<div class="onboarding-grid onboarding-grid-next">
- <section class="onboarding-card"><span class="onboarding-symbol" aria-hidden="true">＋</span>
- <h2>${count?'Import another class':'Import your first class'}</h2>
- <p>Select an Edulink CSV and review all pupil matches before confirming.</p>
- ${button(count?'Import next class':'Choose Edulink CSV','wizard-import-next','btn btn-primary onboarding-main-action')}</section>
- <section class="onboarding-card"><span class="onboarding-symbol" aria-hidden="true">▤</span>
- <h2>Next: One Page Profiles</h2>
- <p>After confirming your marksheet, this page scrolls to the year-group OPP upload step.</p></section></div>`;
- return heading(headingText,subtitle)+
- `<div class="onboarding-step"><span class="onboarding-step-label">GUIDED SETUP · ${isOpp?'OPP IMPORT':isNext?'NEXT CLASS OR BACKUP':'CLASS IMPORT'}</span>
- <strong>${count} teaching group${count===1?'':'s'} in this session</strong></div>
- ${setupLastImport?`<div class="notice onboarding-success"><strong>✓ Edulink import reviewed</strong><p>${esc(setupLastImport)}</p></div>`:''}
- ${isNext&&setupLastOppImport?`<div class="notice onboarding-success" role="status"><strong>OPP import</strong><p>${esc(setupLastOppImport)}</p>
- ${data.pendingOPPs.length?`<p><strong>${data.pendingOPPs.length} unmatched OPP(s) need reviewing.</strong> ${button('Review unmatched OPPs','review-opps','btn btn-small')}</p>`:''}</div>`:''}
- ${isOpp?classes+oppStep:isNext?next+classes:first+classes}
- <div class="onboarding-footer"><p>Information stays in temporary browser memory. Download and verify an encrypted backup when finished.</p>${button('Exit guided setup','wizard-exit','btn')}</div>`;
+ const count=names.length,isOpp=setupPhase==='opp'||setupPhase==='next';
+ const classes=card(names.length?names.map(cls=>'<div class="list-card"><div><strong>'+esc(cls.name)+'</strong><small>'+data.students.filter(p=>p.classId===cls.id&&p.active!==false).length+' pupils</small></div></div>').join(''):'<p>No classes imported yet.</p>','Classes in this session');
+ const progress='<div class="wizard-stage-progress"><span class="'+(!isOpp?'current':'')+'">1 · Classes'+(isOpp?' ✓':'')+'</span><span class="'+(isOpp?'current':'')+'">2 · OPPs</span><span>3 · Seating plans</span><span>4 · Save</span></div>';
+ const status=(setupLastImport?'<div class="notice">'+esc(setupLastImport)+'</div>':'')+(setupLastOppImport?'<div class="notice">'+esc(setupLastOppImport)+'</div>':'');
+ const stage=isOpp?
+ '<section id="setup-opp-step" class="card wizard-stage-card"><h2>Import all One Page Profiles</h2><p>Select multiple year-group ZIP files or PDF and Word documents together. Only pupils in your imported classes are matched.</p><div class="onboarding-folder-path"><strong>Staffshare › Inclusion › Inclusion Matters › One Page Profiles</strong></div><div class="onboarding-file-drop" data-opp-drop="true"><p>Drop files here or select them.</p>'+button('Choose OPP files','wizard-import-opp','btn btn-primary')+'</div>'+
+ (data.pendingOPPs.length?'<div class="alert">'+data.pendingOPPs.length+' possible identity matches require review. '+button('Review OPP matches','review-opps','btn')+'</div>':'')+
+ '<div class="wizard-stage-actions">'+button('Continue to seating plans','wizard-begin-seating','btn btn-primary')+button('Back to class imports','wizard-back-imports','btn')+'</div></section>':
+ '<section class="card wizard-stage-card"><h2>Import all your teaching groups</h2><p>Select multiple Edulink CSV marksheets together. Review the proposed class names before adding pupils. Files without a teaching group use their filename as a suggested name.</p><div class="wizard-stage-actions">'+button('Choose CSV files','wizard-import-next','btn btn-primary')+button('Continue to OPPs','wizard-finish','btn',count?'':'disabled')+'</div></section>';
+ return heading(isOpp?'Step 2: import pupil support':'Step 1: import classes','Complete all classes and OPPs before creating seating plans.')+progress+status+stage+classes+'<div class="onboarding-footer"><p>All information remains in this browser. Save your encrypted backup at the end, or use Backup at any point if you need to stop.</p>'+button('Exit guided setup','wizard-exit','btn')+'</div>';
 }
 
 function dashboard(){const pupils=currentStudents();return heading('Welcome to Seating Plans','An offline-in-the-browser teacher workspace. Student information is never transmitted.',button('↑ Import Edulink CSV','import-csv','btn btn-primary')+button('Guided setup','wizard-start','btn')+(data.classes.length?button('Guided seating plans','wizard-start-seating','btn'):'')+button('↑ Import OPPs','import-opp','btn')+(data.pendingOPPs?.length?button('Review OPP matches ('+data.pendingOPPs.length+')','review-opps','btn'):''))+ 
@@ -1032,30 +982,30 @@ function action(id,attrs={}){try{switch(id){
  case 'manage-move':manageMove();break;
  case 'manage-inactive':case 'manage-restore':{const cls=currentClass(),ids=manageSelected();if(!cls||!ids.size){notice('Select pupils first.','error');break;}const remove=id==='manage-inactive';if(remove&&!confirm('Mark '+ids.size+' selected pupil(s) inactive and clear their seats and rules? Their records will remain available for restoration.'))break;mutation(()=>{if(remove)detachClassSeats(cls.id,ids);for(const s of data.students)if(s.classId===cls.id&&ids.has(s.id))s.active=!remove;});notice('Class register updated. Undo is available.','success');break;}
  case 'manage-delete':{const cls=currentClass();if(!cls)break;openModal('Delete class','<div class="alert">This deletes the class, its pupils, OPPs, assessments, teacher records and seating plans from this session. Export an encrypted backup first. Move any pupils you want to keep before deleting.</div>'+field('confirm','Type the exact class name to confirm'),fd=>{if(clean(fd.get('confirm'))!==cls.name)throw new Error('Class name does not match.');const ids=new Set(data.students.filter(s=>s.classId===cls.id).map(s=>s.id));mutation(()=>{data.classes=data.classes.filter(c=>c.id!==cls.id);data.students=data.students.filter(s=>!ids.has(s.id));data.plans=data.plans.filter(p=>p.classId!==cls.id);for(const key of ['records','assessments','questioningLog'])data[key]=(data[key]||[]).filter(x=>x.classId!==cls.id&&!ids.has(x.studentId));delete data.questioned[cls.id];data.yearRollovers=(data.yearRollovers||[]).filter(x=>x.fromClassId!==cls.id&&x.toClassId!==cls.id);selectedStudent='';selectedSeat='';absent.clear();groupResult=[];lastPicked='';});notice('Class deleted. Undo is available.','success');},'Delete class');break;}
- case 'wizard-start':setupActive=true;setupPhase=data.classes.length?'next':'import';setupLastImport='';setupLastOppImport='';setupYearGroups=[];goto('setup');break;
+ case 'wizard-start':setupActive=true;setupPhase='import';setupLastImport='';setupLastOppImport='';setupYearGroups=[];goto('setup');break;
  case 'wizard-import-next':$('#csvFile').click();break;
  case 'wizard-import-opp':$('#oppFiles').click();break;
  case 'wizard-more-opp':setupPhase='opp';setupLastOppImport='';render();queueMicrotask(()=>wizardScrollToStep('setup-opp-step'));break;
- case 'wizard-skip-opp':setupPhase='next';setupLastOppImport='OPP import skipped. You can add profiles later.';render();queueMicrotask(()=>wizardScrollToStep('setup-next-step'));break;
+ case 'wizard-skip-opp':wizardStartPlanPhase();break;
  case 'wizard-skip':case 'wizard-exit':setupActive=false;setupPhase='import';setupLastOppImport='';setupYearGroups=[];wizardClassIds=[];wizardPlanIndex=0;wizardConfirmed=[];wizardVerified='';goto('dashboard');break;
  case 'wizard-finish':{
    if(!data.classes.some(c=>data.students.some(s=>s.classId===c.id&&s.active!==false))){
     notice('Import at least one class before backing up.','error');break;
    }
-   setupPhase='classes-backup';wizardVerified='';render();
-   queueMicrotask(()=>backupModal('classes'));break;
+   setupPhase='opp';wizardVerified='';render();break;
  }
  case 'wizard-create-backup':if(['classes-backup','final-backup'].includes(setupPhase))backupModal(setupPhase==='classes-backup'?'classes':'finished');break;
  case 'wizard-verify-backup':$('#verifyBackupFile').click();break;
  case 'wizard-begin-seating':{
-  if(setupPhase!=='classes-backup'||wizardVerified!=='classes-backup'){notice('Verify the downloaded classes backup before continuing.','error');break;}
+  if(!['opp','next','classes-backup'].includes(setupPhase))break;
+  if(data.pendingOPPs.length&&!confirm('Some OPP identities still need review. Continue without attaching these profiles?'))break;
   wizardStartPlanPhase();break;
  }
  case 'wizard-start-seating':{
   if(!data.classes.length){notice('Import or restore classes first.','error');break;}
   setupActive=true;wizardStartPlanPhase();break;
  }
- case 'wizard-back-imports':setupPhase='next';wizardVerified='';render();break;
+ case 'wizard-back-imports':setupPhase='import';wizardVerified='';render();break;
  case 'wizard-new-plan':{
   if(setupPhase!=='plan'||!setupActive)break;
   const id=wizardClassIds[wizardPlanIndex];
@@ -1115,7 +1065,8 @@ function action(id,attrs={}){try{switch(id){
   break;
  }
  case 'wizard-complete':{
-  if(setupPhase!=='final-backup'||wizardVerified!=='final-backup'){notice('Verify the final seating plans backup before finishing.','error');break;}
+  if(setupPhase!=='final-backup'||!['downloaded','final-backup'].includes(wizardVerified)){notice('Save your encrypted backup before finishing.','error');break;}
+  if(wizardVerified==='downloaded'&&!confirm('Have you checked that your encrypted backup has downloaded?'))break;
   setupPhase='complete';render();break;
  }
  case 'wizard-open-finished':setupActive=false;setupPhase='import';goto('seating');break;
@@ -1445,14 +1396,15 @@ function recordModal(type='homework',editId=''){
 }
 
 function download(content,name,mime){const blob=new Blob([content],{type:mime});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),15000);}
-function backupModal(kind=''){if(!crypto.subtle){notice('Encrypted backups require a secure (HTTPS) browser context.','error');return;}openModal(kind==='classes'?'Create classes backup':kind==='finished'?'Create final seating plans backup':'Create encrypted backup',`<div class="callout privacy">Creates one encrypted file containing all your session data, including private OPP details. Use a strong, unique password of at least 8 characters.</div><label>Backup password<input name="password" type="password" required minlength="8" autocomplete="new-password"></label><label>Repeat password<input name="confirm" type="password" required minlength="8" autocomplete="new-password"></label>`,async fd=>{const pass=String(fd.get('password'));if(pass.length<8||pass!==fd.get('confirm'))throw new Error('Passwords must match and be at least 8 characters.');const encrypted=await encryptBackup(data,pass);if(kind)wizardVerified='';download(encrypted,kind==='classes'?`seating-classes-${isoDate()}.seatingplan`:kind==='finished'?`seating-plans-finished-${isoDate()}.seatingplan`:`seating-plans-${isoDate()}.seatingplan`,'application/octet-stream');render();notice('Encrypted download requested. Verify the saved file before closing this session.','success');});}
+function backupModal(kind=''){if(!crypto.subtle){notice('Encrypted backups require a secure (HTTPS) browser context.','error');return;}openModal(kind==='classes'?'Create classes backup':kind==='finished'?'Create final seating plans backup':'Create encrypted backup',`<div class="callout privacy">Creates one encrypted file containing all your session data, including private OPP details. Use a strong, unique password of at least 8 characters.</div><label>Backup password<input name="password" type="password" required minlength="8" autocomplete="new-password"></label><label>Repeat password<input name="confirm" type="password" required minlength="8" autocomplete="new-password"></label>`,async fd=>{const pass=String(fd.get('password'));if(pass.length<8||pass!==fd.get('confirm'))throw new Error('Passwords must match and be at least 8 characters.');const snapshot=clone(data);const encrypted=await encryptBackup(snapshot,pass);const checked=validateBackup(await decryptBackup(encrypted,pass));if(JSON.stringify(checked)!==JSON.stringify(snapshot))throw new Error('Encrypted backup self-check failed.');if(kind)wizardVerified='';download(encrypted,kind==='classes'?`seating-classes-${isoDate()}.seatingplan`:kind==='finished'?`seating-plans-finished-${isoDate()}.seatingplan`:`seating-plans-${isoDate()}.seatingplan`,'application/octet-stream');if(kind==='finished'&&JSON.stringify(snapshot)===JSON.stringify(data))wizardVerified='downloaded';render();notice('Encrypted backup generated and checked in memory. Confirm the file has downloaded.','success');});}
 async function importCSV(files){
  if(!files.length)return;
- const incoming=[],diagnostics=[];
+ const incoming=[],diagnostics=[],batches=[];
  for(const file of files){
   if(file.size>10*1024*1024)throw new Error('CSV larger than 10 MB.');
   const pack=readEdulink(await file.text());
-  incoming.push(...pack.students);
+  const groups=new Map();for(const pupil of pack.students){const raw=clean(pupil.className)||'Imported Class';if(!groups.has(raw))groups.set(raw,[]);groups.get(raw).push(pupil);}
+  for(const [raw,students] of groups){const fallback=!raw||/^imported class$/i.test(raw);const suggested=fallback?clean(file.name.replace(/\.csv$/i,'')):raw;batches.push({filename:file.name,raw,students,suggested:suggested||'Class '+(batches.length+1)});incoming.push(...students);}
   const keys=pack.headers.map(h=>clean(h).toLowerCase().replace(/[^a-z0-9]+/g,''));
   const duplicates=pack.headers.filter((h,i)=>keys.indexOf(keys[i])!==i);
   if(duplicates.length)diagnostics.push(file.name+': duplicate headings: '+[...new Set(duplicates)].join(', '));
@@ -1462,7 +1414,15 @@ async function importCSV(files){
   if(!pack.matched.includes('pp'))diagnostics.push(file.name+': Pupil Premium column not found');
  }
  if(!incoming.length)throw new Error('No pupils found in these files.');
- reviewEdulinkImport(incoming,diagnostics);
+ reviewCSVClassNames(batches,diagnostics);
+}
+function reviewCSVClassNames(batches,diagnostics){
+ const rows=batches.map((b,i)=>'<div class="list-card" style="align-items:flex-start;flex-wrap:wrap"><div style="flex:1"><strong>'+esc(b.filename)+'</strong><small>'+b.students.length+' pupils · CSV group: '+esc(b.raw)+'</small></div><div style="flex:1">'+field('class_'+i,'Teaching group name',b.suggested)+'</div></div>').join('');
+ openModal('Confirm class names','<p>Check or edit every teaching group name. Different files are kept separate unless you deliberately give them the same name.</p><div class="list-scroll" style="max-height:55vh">'+rows+'</div>',fd=>{
+  const names=batches.map((b,i)=>clean(fd.get('class_'+i)));if(names.some(n=>!n))throw new Error('Enter a name for every teaching group.');
+  const duplicate=names.some((n,i)=>names.slice(0,i).some(x=>x.toLowerCase()===n.toLowerCase()));if(duplicate&&!confirm('Some files have the same class name. Merge those files into the same teaching group?'))throw new Error('Choose different class names to keep the groups separate.');
+  const rows=batches.flatMap((b,i)=>b.students.map(p=>({...p,className:names[i]})));queueMicrotask(()=>reviewEdulinkImport(rows,diagnostics));
+ },'Review pupils');
 }
 function reviewEdulinkImport(incoming,diagnostics=[]){
  const preview=buildEdulinkReview(data.classes,data.students,incoming),items=preview.items;
@@ -1522,9 +1482,9 @@ function reviewEdulinkImport(incoming,diagnostics=[]){
   importSummary=`Edulink reviewed: ${added} added, ${updated} refreshed, ${retired} marked inactive. Existing seating and records retained.`;
   notice(importSummary,'success');
   if(setupActive){
-   setupPhase='opp';setupLastImport=importSummary;setupLastOppImport='';
+   setupPhase='import';setupLastImport=importSummary;
    setupYearGroups=[...new Set(choices.filter(x=>x.decision!=='skip').map(x=>yearGroupFromClass(x.item.group)).filter(Boolean))];
-   queueMicrotask(()=>{goto('setup');wizardScrollToStep('setup-opp-step');});
+   queueMicrotask(()=>goto('setup'));
   }
  },'Confirm reviewed import');
 }
@@ -1547,8 +1507,8 @@ async function importOPPs(files){
  oppSummary=`Matched ${matched} OPP(s), ${unmatched} need teacher matching, ${ignored} skipped (no exact match in your imported classes), ${errors.length} failed. ${suggestions} seating preference suggestion(s) available for teacher review.`;
  notice(oppSummary,errors.length?'error':'success');
  if(setupActive&&setupPhase==='opp'&&(matched||unmatched||ignored)){
-  setupPhase='next';setupLastOppImport=oppSummary;
-  render();queueMicrotask(()=>wizardScrollToStep('setup-next-step'));
+  setupPhase='opp';setupLastOppImport=oppSummary;
+  render();
  }
  if(unmatched||errors.length){
   openModal('OPP import review',`<p>${esc(oppSummary)}</p><p class="muted tiny">No uncertain OPP was attached to a pupil. Use <strong>Review OPP matches</strong> to link documents after checking their identities.</p><div class="list-scroll">${errors.map(x=>`<p class="alert">${esc(x)}</p>`).join('')}</div>`,()=>{},'Close');
