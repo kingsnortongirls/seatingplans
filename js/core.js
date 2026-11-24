@@ -341,7 +341,7 @@ export function buildPreset(kind,name) {
   [28,38].forEach(x=>add(x,90,'IT2-Lower-Left'));
   [72,82].forEach(x=>add(x,90,'IT2-Lower-Right'));
   applyIT2Priorities({seats});
-  return {id:uid(),name:name||'IT2',kind:'it2',preset:'it2',accessIT2Version:1,seats,teacher:{x:55,y:86},board:'back'};
+  return {id:uid(),name:name||'IT2',kind:'it2',preset:'it2',accessIT2Version:2,seats,teacher:{x:55,y:86},board:'back'};
  }
  const seats=[];const add=(x,y,row,col,group)=>seats.push({id:uid(),label:String(seats.length+1),x,y,rotation:0,priority:'normal',group});
  if(kind==='pairs')for(let row=0;row<4;row++)for(let pair=0;pair<4;pair++)for(let col=0;col<2;col++)add(9+pair*23+col*9,24+row*18,row,col,'R'+row+'P'+pair);
@@ -400,14 +400,14 @@ function upgradeIT3Access(layout){
  if(new Set(layout.seats.map(s=>Number(s.label))).size!==34||layout.seats.some(s=>!Number.isInteger(Number(s.label))||Number(s.label)<1||Number(s.label)>34))return false;
  applyIT3Priorities(layout);layout.accessIT3Version=2;return true;
 }
-const it2AccessibleSeats=new Set([24,25,30,31,32,33]);
+const it2AccessibleSeats=new Set([16,17,18,19,20,21,22,23,24,25,30,31,32,33]);
 function applyIT2Priorities(layout){
  for(const s of layout.seats){s.priority=it2AccessibleSeats.has(Number(s.label))?'access':'normal';s.avoidIfPossible=false;}
 }
 function upgradeIT2Access(layout){
- if(!layout||layout.kind!=='it2'||layout.accessIT2Version===1||layout.seats?.length!==33)return false;
+ if(!layout||layout.kind!=='it2'||layout.accessIT2Version===2||layout.seats?.length!==33)return false;
  if(new Set(layout.seats.map(s=>Number(s.label))).size!==33||layout.seats.some(s=>!Number.isInteger(Number(s.label))||Number(s.label)<1||Number(s.label)>33))return false;
- applyIT2Priorities(layout);layout.accessIT2Version=1;return true;
+ applyIT2Priorities(layout);layout.accessIT2Version=2;return true;
 }
 function applyIT1Priorities(layout){
  for(const s of layout.seats){const n=Number(s.label);s.priority=n>=19&&n<=30?'access':n===31||n===32?'avoid':'normal';s.avoidIfPossible=false;}
