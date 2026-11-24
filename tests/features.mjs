@@ -77,7 +77,9 @@ for(const negative of [
 
 const room=buildPreset('it3','IT3');
 assert.equal(room.seats.length,34);
-assert.equal(room.seats.filter(s=>s.priority==='access').length,8);
+assert.equal(room.seats.filter(s=>s.priority==='access').length,20);
+assert.deepEqual(room.seats.filter(s=>s.priority==='avoid'||s.avoidIfPossible).map(s=>+s.label),[15,22,23,24,25,26,27,28]);
+assert.deepEqual(buildPreset('it2').seats.filter(s=>s.priority==='access').map(s=>+s.label),[16,17,18,19,20,21,22,23,24,25,30,31,32,33]);
 assert.equal(buildPreset('it2','IT2').seats.length,33);
 // Screenshots supply room geometry only. Never copy real pupil names or images.
 const it1=buildPreset('it1');
@@ -96,8 +98,8 @@ assert.equal(rm29.seats.filter(s=>s.group==='RM29-Right').length,5);
 assert.equal(rm29.seats.filter(s=>s.group.startsWith('RM29-Pair-')).length,18);
 assert.equal(new Set(rm29.seats.filter(s=>s.group.startsWith('RM29-Pair-')).map(s=>s.group)).size,9);
 for(const schoolRoom of [it1,rm29]){
- assert.ok(schoolRoom.seats.every(s=>s.priority==='normal'),
-  'The screenshots do not justify defaulting any pupil-related accessibility priority');
+ assert.deepEqual(schoolRoom.seats.filter(s=>s.priority==='access').map(s=>+s.label),schoolRoom===it1?[19,20,21,22,23,24,25,26,27,28,29,30]:[]);
+ assert.deepEqual(schoolRoom.seats.filter(s=>s.priority==='avoid').map(s=>+s.label),schoolRoom===it1?[31,32]:[]);
  assert.equal(new Set(schoolRoom.seats.map(s=>s.id)).size,schoolRoom.seats.length);
  assert.equal(new Set(schoolRoom.seats.map(s=>s.label)).size,schoolRoom.seats.length);
  assert.ok(schoolRoom.seats.every(s=>s.x>=5&&s.x<=95&&s.y>=8&&s.y<=91));
@@ -165,9 +167,9 @@ const students=Array.from({length:20},(_,i)=>({id:'p'+i,name:'Synthetic '+i,
  send:i<5?'K':'N',pp:i>=15?'Yes':'No',prior:i%2===0?'High':'Low'}));
 const suggested=autoSeat(plan,students,{send:true,pp:true,mixed:true,keepApart:true,keepLocked:true,front:true});
 assert.equal(Object.keys(suggested.assignments).length,20);
-assert.equal(suggested.access.capacity,8);
+assert.equal(suggested.access.capacity,20);
 assert.equal(suggested.access.eligible,10);
-assert.equal(suggested.access.unmet.length,2);
+assert.equal(suggested.access.unmet.length,0);
 plan.rules=[{id:'apart',type:'apart',a:'p1',b:'p2',mode:'distance',distance:100,strict:true}];
 
 const soloAndTeacherPlan=newPlan('class',room,'Review');
