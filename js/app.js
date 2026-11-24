@@ -2,7 +2,7 @@ import {uid,clone,clean,esc,short,nameKey,isoDate,readEdulink,buildEdulinkReview
 
 // Everything below exists in memory only. No localStorage, cookies, IndexedDB, API calls or telemetry.
 const initial=()=>({schema:1,classes:[],students:[],rooms:[defaultRoom(),buildPreset('it3','IT3'),buildPreset('it2','IT2'),buildPreset('it1','IT1'),buildPreset('rm29','RM29')],plans:[],records:[],assessments:[],questioned:{},questioningLog:[],yearRollovers:[],pendingOPPs:[],categories:['Homework not submitted','Truancy','Lack of effort','Disrespect','Missing equipment','Disruption','Not following instructions','Incomplete classwork','Other']});
-let data=initial(),view='welcome',setupActive=false,setupPhase='import',setupLastImport='',setupLastOppImport='',setupYearGroups=[],wizardClassIds=[],wizardPlanIndex=0,wizardConfirmed=[],wizardVerified='',classId='',roomId=data.rooms[0].id,planId='',selectedStudent='',selectedSeat='',seatMoveSource='',placingStudentId='',selectedRecord='',dirty=false,history=[],future=[],profileTab='support',searchTerm='',recordFilter='all',printMode='teacher',groupResult=[],lastPicked='',pickerExclude=true,absent=new Set(),layoutMode='move',pendingOPPs=[],oppSummary='',importSummary='',dragState=null,homeworkSession=null,projectorWindow=null,backupVerifyStatus='',hideIndicators=false,privacyLocked=false,lessonTimer={remaining:300,running:false,endsAt:0},lessonTimerHandle=null,lastPickerState='',pickerSpin=null,contextLongPress=null,suppressSeatClick=false,recordPeriod=30;
+let data=initial(),view='welcome',setupActive=false,setupPhase='import',setupLastImport='',setupLastOppImport='',setupYearGroups=[],wizardClassIds=[],wizardPlanIndex=0,wizardConfirmed=[],wizardVerified='',classId='',roomId=data.rooms[0].id,planId='',selectedStudent='',selectedSeat='',seatMoveSource='',placingStudentId='',selectedRecord='',dirty=false,history=[],future=[],profileTab='support',searchTerm='',recordFilter='all',printMode='teacher',groupResult=[],lastPicked='',pickerExclude=true,absent=new Set(),layoutMode='move',pendingOPPs=[],oppSummary='',importSummary='',dragState=null,homeworkSession=null,projectorWindow=null,backupVerifyStatus='',hideIndicators=false,privacyLocked=false,lessonTimer={remaining:300,running:false,endsAt:0},lessonTimerHandle=null,lastPickerState='',pickerSpin=null,contextLongPress=null,suppressSeatClick=false,recordPeriod=30,assessmentWizard=null;
 const $=sel=>document.querySelector(sel), $$=sel=>[...document.querySelectorAll(sel)];
 const currentClass=()=>data.classes.find(c=>c.id===classId);
 const currentRoom=()=>data.rooms.find(r=>r.id===roomId)||data.rooms[0];
@@ -41,10 +41,10 @@ function mutation(fn){backupVerifyStatus='';wizardVerified='';if(setupActive&&se
 function undo(){if(!history.length)return;backupVerifyStatus='';wizardVerified='';if(setupActive&&setupPhase==='plan')wizardConfirmed=wizardConfirmed.filter(id=>id!==classId);future.push(clone(data));data=history.pop();reconcile();dirty=true;render();notice('Change undone.');}
 function redo(){if(!future.length)return;backupVerifyStatus='';wizardVerified='';if(setupActive&&setupPhase==='plan')wizardConfirmed=wizardConfirmed.filter(id=>id!==classId);history.push(clone(data));data=future.pop();reconcile();dirty=true;render();notice('Change restored.');}
 function reconcile(){if(!Array.isArray(data.assessments))data.assessments=[];if(!Array.isArray(data.questioningLog))data.questioningLog=[];if(!Array.isArray(data.yearRollovers))data.yearRollovers=[];if(!Array.isArray(data.pendingOPPs))data.pendingOPPs=[];if(!data.rooms.length)data.rooms=[defaultRoom()];if(!data.rooms.some(r=>r.id===roomId))roomId=data.rooms[0].id;if(!data.classes.some(c=>c.id===classId))classId=data.classes[0]?.id||'';if(!data.plans.some(p=>p.id===planId&&p.classId===classId))planId=data.plans.filter(p=>p.classId===classId).at(-1)?.id||'';}
-function goto(next){seatMoveSource='';placingStudentId='';if(!['tools','lesson'].includes(next))stopPickerSpin();if(setupActive&&next!=='setup'&&!(setupPhase==='plan'&&next==='seating')){setupActive=false;setupPhase='import';}view=next;render();window.scrollTo({top:0,behavior:'instant'});}
-function setClass(id){seatMoveSource='';placingStudentId='';stopPickerSpin();if(homeworkSession&&homeworkSession.classId!==id){if(!confirm('Cancel unfinished homework marking and switch classes? No homework records have been written.'))return;homeworkSession=null;}classId=id;planId=data.plans.filter(p=>p.classId===id).at(-1)?.id||'';roomId=data.plans.find(p=>p.id===planId)?.roomId||roomId;selectedStudent='';selectedSeat='';absent.clear();groupResult=[];lastPicked='';}
-function render(){reconcile();$$('#nav [data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view===view));$('#breadcrumbs').textContent=({welcome:'Start here',setup:'Set up classes',dashboard:'Your workspace',seating:'Seating plans',lesson:'Lesson mode',assessments:'Assessment history',overview:'Class overview',rooms:'Classroom designer',profiles:'Pupil profiles',records:'Teacher records',tools:'Teaching tools',backup:'Backup & restore'})[view];$('#saveIndicator').textContent=dirty?'● Changes not backed up':'Session only';$('#undoButton').disabled=history.length===0;$('#redoButton').disabled=future.length===0;
- const views={welcome:welcome,setup:setup,dashboard:dashboard,seating:seating,lesson:lesson,assessments:assessmentsView,overview:classOverview,rooms:rooms,profiles:profiles,records:records,tools:tools,backup:backup};$('#privacyToggle').querySelector('span').textContent=privacyLocked?'Unlock screen':'Privacy lock';$('#app').innerHTML=privacyLocked?'<div class="privacy-cover"><h1>Screen concealed</h1><p>Pupil and staff information is temporarily hidden. Select Unlock screen to return to your workspace.</p></div>':views[view]();}
+function goto(next){if(view==='assessment-entry'&&next!=='assessment-entry'&&assessmentWizard){if(!confirm('Discard the unfinished whole-class assessment? No grades have been saved yet.'))return;assessmentWizard=null;}seatMoveSource='';placingStudentId='';if(!['tools','lesson'].includes(next))stopPickerSpin();if(setupActive&&next!=='setup'&&!(setupPhase==='plan'&&next==='seating')){setupActive=false;setupPhase='import';}view=next;render();window.scrollTo({top:0,behavior:'instant'});}
+function setClass(id){if(assessmentWizard&&id!==classId){if(!confirm('Discard your unfinished assessment grades before switching classes?'))return;assessmentWizard=null;}seatMoveSource='';placingStudentId='';stopPickerSpin();if(homeworkSession&&homeworkSession.classId!==id){if(!confirm('Cancel unfinished homework marking and switch classes? No homework records have been written.'))return;homeworkSession=null;}classId=id;planId=data.plans.filter(p=>p.classId===id).at(-1)?.id||'';roomId=data.plans.find(p=>p.id===planId)?.roomId||roomId;selectedStudent='';selectedSeat='';absent.clear();groupResult=[];lastPicked='';}
+function render(){reconcile();$$('#nav [data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view===(view==='assessment-entry'?'assessments':view)));$('#breadcrumbs').textContent=({welcome:'Start here',setup:'Set up classes',dashboard:'Your workspace',seating:'Seating plans',lesson:'Lesson mode',assessments:'Assessment history','assessment-entry':'Whole-class assessment',overview:'Class overview',rooms:'Classroom designer',profiles:'Pupil profiles',records:'Teacher records',tools:'Teaching tools',backup:'Backup & restore'})[view];$('#saveIndicator').textContent=dirty?'● Changes not backed up':'Session only';$('#undoButton').disabled=history.length===0;$('#redoButton').disabled=future.length===0;
+ const views={welcome:welcome,setup:setup,dashboard:dashboard,seating:seating,lesson:lesson,assessments:assessmentsView,'assessment-entry':assessmentWizardView,overview:classOverview,rooms:rooms,profiles:profiles,records:records,tools:tools,backup:backup};$('#privacyToggle').querySelector('span').textContent=privacyLocked?'Unlock screen':'Privacy lock';$('#app').innerHTML=privacyLocked?'<div class="privacy-cover"><h1>Screen concealed</h1><p>Pupil and staff information is temporarily hidden. Select Unlock screen to return to your workspace.</p></div>':views[view]();}
 const classChoices=(value=classId)=>choose('classId',data.classes.map(c=>({value:c.id,label:c.name})),value,'data-action="select-class"');
 const planChoices=(value=planId)=>choose('planId',data.plans.filter(p=>p.classId===classId).map(p=>({value:p.id,label:p.name})),value,'data-action="select-plan"');
 // An intentionally transient first-run journey. We never remember that a teacher
@@ -335,11 +335,169 @@ function assessmentsView(){
  const select=cols.length?'<div class="board-tools"><label>Displayed Edulink COTTA'+choose('assessmentColumn',cols.map(x=>({value:x,label:x})),cls.selectedAssessment||cols[0],'data-action="choose-assessment-column"')+'</label></div>':'<div class="notice">No selectable COTTA columns were detected in this import.</div>';
  const people=choose('assessmentPupil',list.map(x=>({value:x.id,label:x.name})),pupil?.id||'','data-action="select-assessment-pupil"');
  const rows=hist.slice().reverse().map(a=>'<tr><td>'+esc(fmtDate(a.date))+'</td><td>'+esc(a.name)+'</td><td>'+esc(a.grade)+'</td><td>'+esc(a.target)+'</td><td>'+(assessmentGap(a.grade,a.target)??'Not comparable')+'</td><td>'+button('Edit','edit-assessment','btn btn-small','data-id="'+esc(a.id)+'"')+'</td></tr>').join('');
- return heading('Assessment history','Choose COTTA data, enter assessments and review dated pupil progress.',button('+ Save assessment','new-assessment','btn btn-primary'))+
+ return heading('Assessment history','Choose COTTA data, enter assessments and review dated pupil progress.',button('Add whole class assessment','new-class-assessment','btn btn-primary')+button('Single pupil assessment','new-assessment','btn'))+
  '<div class="board-tools"><label>Class'+classChoices()+'</label><label>Pupil'+people+'</label></div>'+select+
  card(pupil?'<h3>'+esc(pupil.name)+' · Current '+esc(pupil.current||'Not supplied')+' · Target '+esc(pupil.target||'Not supplied')+'</h3>'+progressChart(pupil.id):'Select a pupil','Pupil progress')+
  card(hist.length?'<div class="table-wrap"><table><thead><tr><th>Date</th><th>Assessment</th><th>Grade</th><th>Target</th><th>Gap</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<p>No assessments saved for this pupil yet.</p>','Assessment history');
 }
+// Whole-class assessment entry is a transient draft. It is NEVER included in
+// backups or committed to student records before explicit final confirmation.
+function startWholeClassAssessment(){
+ const pupils=currentStudents().slice().sort((a,b)=>a.name.localeCompare(b.name,'en-GB'));
+ if(!pupils.length){notice('Import a class with pupils before recording an assessment.','error');return;}
+ const cls=currentClass();
+ const content='<p class="muted tiny">Enter the assessment details once, then work through the whole class one pupil at a time. Enter moves to the next pupil. You can go back and correct any grade before saving.</p>'+
+  '<div class="notice"><strong>Class:</strong> '+esc(cls?.name||'Current class')+' · '+pupils.length+' pupil(s)</div>'+
+  '<label>Assessment name<input name="name" required maxlength="140" placeholder="e.g. Unit 3 end-of-unit test" autocomplete="off"></label>'+
+  '<label>Assessment date<input name="date" type="date" required value="'+esc(isoDate())+'"></label>'+
+  '<p class="muted tiny">If this class already has results for the same assessment name and date, they will be prefilled for review rather than duplicated.</p>';
+ openModal('Add whole class assessment',content,fd=>{
+  const name=clean(fd.get('name')),date=String(fd.get('date')||'');
+  if(!name||name.length>140||!/^\d{4}-\d{2}-\d{2}$/.test(date))throw Error('Enter an assessment name and a valid date.');
+  const prior=data.assessments.filter(a=>a.classId===classId&&a.date===date&&clean(a.name).toLowerCase()===name.toLowerCase());
+  const old=new Map(prior.filter(a=>pupils.some(p=>p.id===a.studentId)).map(a=>[a.studentId,a]));
+  const grades=Object.fromEntries(pupils.map(p=>[p.id,clean(old.get(p.id)?.grade||'')]));
+  assessmentWizard={classId,name,date,studentIds:pupils.map(p=>p.id),index:0,grades,
+   skipped:Object.fromEntries(pupils.filter(p=>!grades[p.id]).map(p=>[p.id,false]))};
+  // Standard modal closes after onSave. Render after that so the field can
+  // immediately receive keyboard focus without fighting the old modal.
+  queueMicrotask(()=>{
+   if(!assessmentWizard)return;
+   goto('assessment-entry');
+   assessmentFocusGrade();
+  });
+ },'Start entering grades');
+}
+function assessmentFocusGrade(){
+ const input=$('#assessmentGrade');
+ if(input){input.focus();input.select();}
+}
+function assessmentRecordInput(){
+ const draft=assessmentWizard;
+ if(!draft||draft.index>=draft.studentIds.length)return;
+ const id=draft.studentIds[draft.index],input=$('#assessmentGrade');
+ if(!input)return;
+ const grade=clean(input.value);
+ draft.grades[id]=grade.slice(0,8);
+ if(grade)draft.skipped[id]=false;
+}
+function assessmentMove(direction){
+ const draft=assessmentWizard;
+ if(!draft||view!=='assessment-entry')return;
+ assessmentRecordInput();
+ if(direction==='back'){
+  draft.index=Math.max(0,draft.index-1);
+ }else if(direction==='next'){
+  if(draft.index>=draft.studentIds.length)return;
+  const id=draft.studentIds[draft.index];
+  if(!draft.grades[id]&&!draft.skipped[id]){
+   notice('Enter a grade, or choose No result for this pupil.','error');
+   assessmentFocusGrade();return;
+  }
+  draft.index++;
+ }else if(direction==='skip'){
+  if(draft.index>=draft.studentIds.length)return;
+  const id=draft.studentIds[draft.index];draft.grades[id]='';draft.skipped[id]=true;
+  draft.index++;
+ }
+ render();
+ if(draft.index<draft.studentIds.length)assessmentFocusGrade();
+ else $('#assessmentFinish')?.focus();
+}
+function assessmentJump(id){
+ const draft=assessmentWizard;
+ if(!draft||!draft.studentIds.includes(id))return;
+ assessmentRecordInput();
+ draft.index=draft.studentIds.indexOf(id);
+ render();assessmentFocusGrade();
+}
+function assessmentCancel(){
+ if(!assessmentWizard)return;
+ if(!confirm('Discard this whole-class assessment draft? No grades have been saved.'))return;
+ assessmentWizard=null;goto('assessments');
+}
+function saveWholeClassAssessment(){
+ const draft=assessmentWizard;
+ if(!draft||view!=='assessment-entry'||draft.index!==draft.studentIds.length)return;
+ if(draft.classId!==classId){notice('Class changed during assessment entry. No grades saved.','error');return;}
+ const pupils=draft.studentIds.map(id=>student(id));
+ if(pupils.some(p=>!p||p.classId!==draft.classId||p.active===false)){
+  notice('The class register has changed. Review the pupils before saving.','error');return;
+ }
+ const missing=draft.studentIds.filter(id=>!clean(draft.grades[id]));
+ const unreviewed=missing.filter(id=>!draft.skipped[id]);
+ if(unreviewed.length){notice('Some pupils have not been graded or marked No result. Review them first.','error');return;}
+ const grades=Object.fromEntries(draft.studentIds.map(id=>[id,clean(draft.grades[id])]));
+ const nameKey=clean(draft.name).toLowerCase();
+ mutation(()=>{
+  const studentSet=new Set(draft.studentIds),previous=new Map();
+  for(const entry of data.assessments){
+   if(entry.classId===draft.classId&&entry.date===draft.date&&clean(entry.name).toLowerCase()===nameKey&&studentSet.has(entry.studentId)&&!previous.has(entry.studentId))
+    previous.set(entry.studentId,entry);
+  }
+  // Reconcile the same assessment/date instead of appending duplicate
+  // results when the teacher reopens and corrects an existing class set.
+  data.assessments=data.assessments.filter(entry=>!(entry.classId===draft.classId&&
+    entry.date===draft.date&&clean(entry.name).toLowerCase()===nameKey&&studentSet.has(entry.studentId)));
+  for(const id of draft.studentIds){
+   const grade=grades[id];if(!grade)continue;
+   const pupil=student(id),old=previous.get(id);
+   data.assessments.push({id:old?.id||uid(),studentId:id,classId:draft.classId,
+    name:draft.name,date:draft.date,grade,target:old?.target||pupil?.target||'',notes:old?.notes||''});
+  }
+ });
+ const count=Object.values(grades).filter(Boolean).length;
+ assessmentWizard=null;
+ selectedStudent=draft.studentIds.find(id=>grades[id])||draft.studentIds[0]||'';
+ goto('overview');
+ notice(count+' assessment grade(s) saved for '+draft.name+'. '+missing.length+' pupil(s) have no result. Create a verified backup to retain these changes.','success');
+}
+function assessmentWizardView(){
+ const draft=assessmentWizard;
+ if(!draft)return heading('Whole-class assessment','No active assessment draft.')+
+  button('Return to assessment history','go-assessments','btn btn-primary');
+ const pupils=draft.studentIds.map(id=>student(id)).filter(Boolean);
+ const total=pupils.length,atEnd=draft.index>=total,pupil=atEnd?null:pupils[draft.index];
+ const completed=draft.studentIds.filter(id=>clean(draft.grades[id])).length;
+ const skipped=draft.studentIds.filter(id=>!clean(draft.grades[id])&&draft.skipped[id]).length;
+ const percent=total?Math.round((atEnd?total:draft.index)/total*100):0;
+ const header=heading('Whole-class assessment',esc(draft.name)+' · '+esc(fmtDate(draft.date))+' · '+esc(currentClass()?.name||''))+
+ '<div class="assessment-progress" role="progressbar" aria-label="Assessment entry progress" aria-valuemin="0" aria-valuemax="'+total+'" aria-valuenow="'+(atEnd?total:draft.index)+'">'+
+ '<span style="width:'+percent+'%"></span></div>'+
+ '<div class="assessment-progress-caption"><strong>'+(atEnd?'Class completed':'Pupil '+(draft.index+1)+' of '+total)+'</strong>'+
+ '<span>'+completed+' grade(s) entered · '+skipped+' no result</span></div>';
+ const main=atEnd?
+ '<section class="card assessment-entry-main assessment-finish-card" aria-live="polite">'+
+ '<span class="onboarding-step-label">END OF CLASS</span><h2>End of class reached</h2>'+
+ '<p>Save the results for <strong>'+esc(draft.name)+'</strong> and return to the class overview?</p>'+
+ '<div class="grid three">'+stat(completed,'Grades entered','Ready to save')+
+ stat(skipped,'No result','Left without a grade')+
+ stat(total,'Class pupils','Reviewed')+'</div>'+
+ '<p class="muted tiny">Only after you confirm will results be written to this session. Existing results with the same name and date will be updated, not duplicated. Choosing No result removes an existing result for that pupil in this assessment.</p>'+
+ '<div class="assessment-navigation">'+button('Back to last pupil','assessment-back','btn')+
+ button('Save all and return to overview','assessment-save','btn btn-primary','id="assessmentFinish"')+'</div></section>':
+ '<section class="card assessment-entry-main"><span class="onboarding-step-label">PUPIL '+(draft.index+1)+' OF '+total+'</span>'+
+ '<h2>'+esc(pupil?.name||'Unknown pupil')+'</h2>'+
+ '<div class="assessment-pupil-context"><span>Target: <strong>'+esc(pupil?.target||'Not supplied')+'</strong></span>'+
+ '<span>Current: <strong>'+esc(pupil?.current||'Not supplied')+'</strong></span></div>'+
+ '<label class="assessment-grade-label" for="assessmentGrade">Assessment grade</label>'+
+ '<input id="assessmentGrade" name="assessmentGrade" class="assessment-grade-input" type="text" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Enter grade" value="'+esc(draft.grades[pupil.id]||'')+'" aria-describedby="assessmentGradeHelp">'+
+ '<p class="muted tiny" id="assessmentGradeHelp">Press <kbd>Enter</kbd> to move to the next pupil. Grades can be numbers (such as 7), letters (such as B) or another grading scale used in your school.</p>'+
+ '<div class="assessment-navigation">'+button('Previous pupil','assessment-back','btn',draft.index===0?'disabled':'')+
+ button('No result / Skip','assessment-skip','btn')+
+ button(draft.index===total-1?'End of class':'Next pupil','assessment-next','btn btn-primary')+'</div></section>';
+ const list='<aside class="card assessment-entry-list"><h3>Class register</h3><p class="muted tiny">Tap any name to revisit their grade.</p>'+
+ '<div class="assessment-pupil-list">'+pupils.map((p,i)=>{
+  const grade=clean(draft.grades[p.id]);
+  return '<button type="button" data-action="assessment-jump" data-id="'+esc(p.id)+'" class="assessment-pupil-choice'+(i===draft.index?' active':'')+'"'+(i===draft.index?' aria-current="step"':'')+'>'+
+   '<span class="assessment-pupil-number">'+(i+1)+'</span><span>'+esc(p.name)+'</span>'+
+   '<strong class="'+(grade?'assessment-marked':draft.skipped[p.id]?'assessment-ungraded':'')+'">'+esc(grade|| (draft.skipped[p.id]?'No result':'–'))+'</strong></button>';
+ }).join('')+'</div></aside>';
+ return header+'<div class="assessment-entry-layout">'+main+list+'</div>'+
+ '<div class="assessment-exit">'+button('Cancel without saving','assessment-cancel','btn')+
+ '<p class="muted tiny">Draft grades remain in this tab only until you select Save all. Closing or refreshing the page will lose the draft.</p></div>';
+}
+
 function assessmentModal(id=''){
  const old=data.assessments.find(a=>a.id===id),list=currentStudents(),chosen=student(selectedStudent)?.classId===classId?selectedStudent:list[0]?.id;
  if(!list.length){notice('Import a class first.','error');return;}
@@ -386,7 +544,7 @@ function classOverview(){
  (!issueRows.length?'<p>No duplicate names or missing selected assessment/target values detected.</p>':'')+
  (cls.importWarnings||[]).map(w=>'<p class="alert"><strong>Import warning:</strong> '+esc(w)+'</p>').join('')+'</div>';
  return heading('Class overview','Class attainment, confidential teacher records and data-quality checks.',
- button('Assessment history','go-assessments','btn')+button('Year rollover','year-rollover','btn')+button('Export overview','export-class-summary','btn'))+
+ button('Assessment history','go-assessments','btn')+button('Add whole class assessment','new-class-assessment','btn btn-primary')+button('Year rollover','year-rollover','btn')+button('Export overview','export-class-summary','btn'))+
  '<div class="board-tools"><label>Class'+classChoices()+'</label></div>'+
  '<div class="grid four">'+stat(list.length,'Pupils','Active class register')+stat(send,'SEND','Flagged pupils')+stat(pp,'PP','Flagged pupils')+stat(eal,'EAL','Flagged pupils')+
  stat(below,'Below target','Comparable COTTA')+stat(records.filter(r=>r.type==='homework'&&r.status==='Missing').length,'Missing homework','Open records')+
@@ -730,6 +888,14 @@ const cancelLongPress=()=>{if(contextLongPress){clearTimeout(contextLongPress.to
 $('#app').addEventListener('pointermove',e=>{if(contextLongPress&&Math.hypot(e.clientX-contextLongPress.x,e.clientY-contextLongPress.y)>10)cancelLongPress();});
 $('#app').addEventListener('pointerup',cancelLongPress);$('#app').addEventListener('pointercancel',cancelLongPress);
 $('#app').addEventListener('dblclick',e=>{const seat=e.target.closest('[data-seat]');if(seat&&view==='seating'){const id=currentPlan()?.assignments[seat.dataset.seat];if(id)showStudent(id);}});
+$('#app').addEventListener('keydown',e=>{
+ if(view==='assessment-entry'&&e.target.id==='assessmentGrade'&&e.key==='Enter'){
+  e.preventDefault();assessmentMove('next');
+ }
+});
+$('#app').addEventListener('input',e=>{
+ if(view==='assessment-entry'&&e.target.id==='assessmentGrade')assessmentRecordInput();
+});
 $('#app').addEventListener('change',e=>{const t=e.target;if(t.dataset.action==='select-class'){setClass(t.value);render();}else if(t.dataset.action==='choose-assessment-column'){const cls=currentClass(),choice=t.value;if(!cls?.assessmentHeaders?.includes(choice))return;mutation(()=>{cls.selectedAssessment=choice;for(const s of data.students.filter(x=>x.classId===classId)){s.current=s.gradeColumns?.[choice]||'';}});}else if(t.dataset.action==='select-assessment-pupil'){selectedStudent=t.value;render();}else if(t.dataset.action==='wizard-select-plan'){planId=t.value;roomId=currentPlan()?.roomId||roomId;selectedSeat='';wizardConfirmed=wizardConfirmed.filter(id=>id!==classId);render();}else if(t.dataset.action==='select-plan'){planId=t.value;roomId=currentPlan()?.roomId||roomId;selectedSeat='';if(setupActive&&setupPhase==='plan')wizardConfirmed=wizardConfirmed.filter(id=>id!==classId);render();}else if(t.dataset.action==='select-room'){roomId=t.value;selectedSeat='';render();}else if(t.dataset.action==='select-board'){if(!['front','back'].includes(t.value))return;mutation(()=>{currentRoom().board=t.value;});}else if(t.dataset.action==='filter-records'){recordFilter=t.value;render();}else if(t.dataset.action==='select-record-pupil'){selectedRecord=t.value;render();}else if(t.dataset.action==='change-record-period'){recordPeriod=Number(t.value);render();}else if(t.dataset.absent){t.checked?absent.add(t.dataset.absent):absent.delete(t.dataset.absent);render();}else if(t.id==='pickerExclude'){pickerExclude=t.checked;render();}});
 $('#app').addEventListener('input',e=>{if(e.target.id==='pupilSearch'){searchTerm=e.target.value;const pos=e.target.selectionStart;render();const el=$('#pupilSearch');if(el){el.focus();el.setSelectionRange(pos,pos);}}});
 $('#app').addEventListener('submit',e=>{e.preventDefault();const fd=new FormData(e.target);if(e.target.id==='roomSeatForm'){const r=currentRoom(),id=selectedSeat;mutation(()=>{const s=r.seats.find(x=>x.id===id);if(!s)return;s.label=clean(fd.get('label'))||s.label;s.priority=fd.get('priority');s.group=clean(fd.get('group'));s.x=Math.min(95,Math.max(5,Number(fd.get('x'))));s.y=Math.min(93,Math.max(15,Number(fd.get('y'))));s.rotation=Number(fd.get('rotation'));});}else if(e.target.id==='groupForm'){const selected=currentStudents().filter(s=>!fd.get('excludeAbsent')||!absent.has(s.id));groupResult=makeGroups(selected,currentPlan()||{assignments:{},layout:{seats:[]},rules:[]},{size:Number(fd.get('size'))||4,mode:fd.get('mode')});render();}});
@@ -912,6 +1078,13 @@ function action(id,attrs={}){try{switch(id){
  case 'open-overview-pupil':selectedStudent=attrs.id;profileTab='support';goto('profiles');break;
  case 'year-rollover':yearRolloverModal();break;
  case 'export-class-summary':exportClassSummary();break;
+ case 'new-class-assessment':startWholeClassAssessment();break;
+ case 'assessment-next':assessmentMove('next');break;
+ case 'assessment-back':assessmentMove('back');break;
+ case 'assessment-skip':assessmentMove('skip');break;
+ case 'assessment-jump':assessmentJump(attrs.id);break;
+ case 'assessment-cancel':assessmentCancel();break;
+ case 'assessment-save':saveWholeClassAssessment();break;
  case 'new-assessment':assessmentModal();break;
  case 'edit-assessment':assessmentModal(attrs.id);break;
  case 'opp-seating-prompts':oppSeatingPromptsModal();break;
