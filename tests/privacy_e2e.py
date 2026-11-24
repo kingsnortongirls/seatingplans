@@ -65,7 +65,7 @@ async def main():
             # The teacher may skip OPPs before choosing the next class.
             await page.get_by_role('button',name='Skip OPP import for now').click()
             assert await page.get_by_role('button',name='Import next class').count()==1
-            assert await page.get_by_role('button',name="I'm finished · Create backup").count()==1
+            assert await page.get_by_role('button',name="Done importing · Back up classes").count()==1
             # Repeat the wizard for a second fictional class, preserving the first.
             await page.get_by_role('button',name='Import next class').click()
             another=b'Learner,Class,Student ID,Target,COTTA Nov\nPupil Delta,9X/CS,ID4,7,6\n'
@@ -74,7 +74,7 @@ async def main():
             assert await page.get_by_text('2 teaching groups',exact=False).count()>=1
             assert await page.get_by_text('Year 9',exact=False).count()>=1
             await page.get_by_role('button',name='Skip OPP import for now').click()
-            await page.get_by_role('button',name="I'm finished · Create backup").click()
+            await page.get_by_role('button',name="Done importing · Back up classes").click()
             assert await page.get_by_text('Create classes backup').count()>=1
             # Downloading is not verification. Confirm that the first checkpoint
             # blocks proceeding until the downloaded encrypted file is checked.
