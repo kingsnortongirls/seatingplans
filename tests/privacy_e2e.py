@@ -94,9 +94,15 @@ async def main():
             await page.get_by_role('button',name='Continue to seating plans').click()
             # Guide seating creation through all imported classes with the existing
             # rules-aware generator and a deliberate confirmation per class.
-            for expected in ['8X/CS','9X/CS']:
+            for expected,room,places in [('8X/CS','IT1',31),('9X/CS','RM29',29)]:
                 assert await page.get_by_text(expected,exact=True).count()>=1
+                # Both new classroom presets must be directly selectable within
+                # the guided planner, not only from the Room Designer.
+                await page.locator('[name=wizardRoom]').select_option(label=f'{room} ({places} seats)')
                 await page.get_by_role('button',name='Create plan for this class').click()
+                await page.get_by_role('button',name='View and adjust seating plan').click()
+                assert await page.locator(f'.canvas.{room.lower()} .seat').count()==places
+                await page.get_by_role('button',name='Return to guided setup').click()
                 await page.get_by_role('button',name='Preview and generate seats').click()
                 await page.get_by_role('button',name='Preview seating plan').click()
                 await page.get_by_role('button',name='Apply seating plan').click()
@@ -124,6 +130,8 @@ async def main():
             await page.get_by_role('button',name='Return to dashboard').click()
             await page.get_by_role('button',name='Open',exact=True).first.click()
             await page.get_by_role('button',name='+ New version').click()
+            # The default 2-4-2 remains available alongside the new rooms.
+            await page.locator('#modalForm select[name=room]').select_option(label='Standard 2-4-2')
             await page.locator('#modalForm button[type=submit]').click()
             assert await page.locator('.seat').count()==32
             await page.locator('.advanced-plan-tools summary').click()
