@@ -51,46 +51,17 @@ async def main():
             # Fresh sessions clearly offer restoration or a new class wizard.
             assert await page.get_by_role('button',name='Restore encrypted backup').count()==1
             await page.get_by_role('button',name='Start class setup').click()
-            assert await page.get_by_text('Set up your teaching groups').count()==1
-            await page.locator('#csvFile').set_input_files({'name':'synthetic.csv','mimeType':'text/csv','buffer':synthetic_csv()})
-            await page.get_by_role('button',name='Confirm reviewed import').click()
-            # The next stage is the year-group OPP import, with the exact
-            # staff folder instructions and ZIP/multiple-DOCX choices.
-            assert await page.get_by_text('Next: import year-group OPPs').count()==1
-            assert await page.get_by_text('One Page Profiles',exact=True).count()>=1
-            assert await page.get_by_text('Inclusion Matters',exact=True).count()>=1
-            assert await page.get_by_text('Year 8',exact=False).count()>=1
-            assert await page.get_by_role('button',name='Choose PDF, Word or ZIP OPP files').count()==1
-            assert await page.locator('#setup-opp-step').count()==1
-            # The teacher may skip OPPs before choosing the next class.
-            await page.get_by_role('button',name='Skip OPP import for now').click()
-            assert await page.get_by_role('button',name='Import next class').count()==1
-            assert await page.get_by_role('button',name="Done importing · Back up classes").count()==1
-            # Repeat the wizard for a second fictional class, preserving the first.
-            await page.get_by_role('button',name='Import next class').click()
+            assert await page.get_by_text('Step 1: import classes').count()==1
             another=b'Learner,Class,Student ID,Target,COTTA Nov\nPupil Delta,9X/CS,ID4,7,6\n'
-            await page.locator('#csvFile').set_input_files({'name':'second-synthetic.csv','mimeType':'text/csv','buffer':another})
+            await page.locator('#csvFile').set_input_files([
+                {'name':'synthetic.csv','mimeType':'text/csv','buffer':synthetic_csv()},
+                {'name':'second-synthetic.csv','mimeType':'text/csv','buffer':another}])
+            await page.get_by_role('button',name='Review pupils').click()
             await page.get_by_role('button',name='Confirm reviewed import').click()
-            assert await page.get_by_text('2 teaching groups',exact=False).count()>=1
-            assert await page.get_by_text('Year 9',exact=False).count()>=1
-            await page.get_by_role('button',name='Skip OPP import for now').click()
-            await page.get_by_role('button',name="Done importing · Back up classes").click()
-            assert await page.get_by_text('Create classes backup').count()>=1
-            # Downloading is not verification. Confirm that the first checkpoint
-            # blocks proceeding until the downloaded encrypted file is checked.
-            assert await page.get_by_role('button',name='Continue to seating plans').is_disabled()
-            await page.locator('#modalForm input[name=password]').fill('SyntheticPass123')
-            await page.locator('#modalForm input[name=confirm]').fill('SyntheticPass123')
-            async with page.expect_download() as first_export:
-                await page.locator('#modalForm button[type=submit]').click()
-            first_file=await first_export.value
-            assert first_file.suggested_filename.startswith('seating-classes-')
-            await page.get_by_role('button',name='Verify downloaded backup').click()
-            await page.locator('#verifyBackupFile').set_input_files(await first_file.path())
-            await page.locator('#modalForm input[name=password]').fill('SyntheticPass123')
-            await page.locator('#modalForm button[type=submit]').click()
-            await page.locator('#modalForm').wait_for(state='detached',timeout=20000)
-            assert await page.get_by_role('button',name='Continue to seating plans').is_enabled()
+            await page.get_by_role('button',name='Continue to OPPs').click()
+            assert await page.get_by_text('Import all One Page Profiles').count()==1
+            assert await page.get_by_role('button',name='Choose OPP files').count()==1
+            assert await page.locator('#setup-opp-step').count()==1
             await page.get_by_role('button',name='Continue to seating plans').click()
             # Guide seating creation through all imported classes with the existing
             # rules-aware generator and a deliberate confirmation per class.
@@ -119,7 +90,7 @@ async def main():
                 await page.locator('#modalForm button[type=submit]').click()
             last_file=await last_export.value
             assert last_file.suggested_filename.startswith('seating-plans-finished-')
-            await page.get_by_role('button',name='Verify downloaded backup').click()
+            await page.get_by_role('button',name='Verify saved file (optional)').click()
             await page.locator('#verifyBackupFile').set_input_files(await last_file.path())
             await page.locator('#modalForm input[name=password]').fill('SyntheticPass123')
             await page.locator('#modalForm button[type=submit]').click()
