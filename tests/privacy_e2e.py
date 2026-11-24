@@ -34,7 +34,7 @@ async def main():
     url=f'http://127.0.0.1:{server.server_port}/'
     with tempfile.TemporaryDirectory() as temp:
         async with async_playwright() as pw:
-            browser=await pw.chromium.launch(headless=True,executable_path='/usr/bin/chromium',args=['--no-sandbox'])
+            browser=await pw.chromium.launch(headless=True,executable_path='/usr/bin/chromium' if pathlib.Path('/usr/bin/chromium').exists() else None,args=['--no-sandbox'])
             context=await browser.new_context(accept_downloads=True)
             page=await context.new_page()
             requests=[];errors=[]
