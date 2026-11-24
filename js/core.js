@@ -404,7 +404,11 @@ export function addMissingSchoolRooms(rooms,plans=[]){
  if(Array.isArray(plans))for(const plan of plans){
   if(!isOriginal31SeatIT1(plan?.layout))continue;
   const room=rooms.find(r=>r.id===plan.roomId);
-  const extra=room?.seats?.length===33&&room.kind==='it1'?room.seats.slice(-2):null;
+  // Reuse new room seat IDs only if this plan is a snapshot of the
+  // same 31 original desks. A reset/custom room may use different IDs.
+  const extra=room?.seats?.length===33&&room.kind==='it1'&&
+   plan.layout.seats.every((seat,i)=>room.seats[i]?.id===seat.id)?
+   room.seats.slice(-2):null;
   extendOriginalIT1(plan.layout,extra);changed++;
  }
  return changed;
