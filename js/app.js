@@ -1468,19 +1468,20 @@ async function importOPPs(files){
  if(!data.students.length){notice('Import an Edulink class list before importing OPPs.','error');return;}
  notice('Reading Word and PDF documents locally…');
  const entries=await readOppFiles(files);
- let matched=0,unmatched=0,errors=[];
+ let matched=0,unmatched=0,ignored=0,errors=[];
  mutation(()=>{
   for(const entry of entries){
    if(entry.error){errors.push(`${entry.filename}: ${entry.error}`);continue;}
    const key=nameKey(entry.opp.name),candidates=data.students.filter(s=>nameKey(s.name)===key);
+   if(!key||!candidates.length){ignored++;continue;}
    if(candidates.length===1){candidates[0].opp=entry.opp;matched++;}
-   else{data.pendingOPPs.push({id:uid(),filename:entry.filename,opp:entry.opp});unmatched++;}
+   else if(!data.pendingOPPs.some(p=>p.filename===entry.filename&&nameKey(p.opp.name)===key)){data.pendingOPPs.push({id:uid(),filename:entry.filename,opp:entry.opp});unmatched++;}
   }
  });
  const suggestions=data.students.reduce((total,s)=>total+oppSeatingHints(s.opp).filter(h=>!h.reviewOnly).length,0);
- oppSummary=`Matched ${matched} OPP(s), ${unmatched} need teacher matching, ${errors.length} failed. ${suggestions} seating preference suggestion(s) available for teacher review.`;
+ oppSummary=`Matched ${matched} OPP(s), ${unmatched} need teacher matching, ${ignored} skipped (no exact match in your imported classes), ${errors.length} failed. ${suggestions} seating preference suggestion(s) available for teacher review.`;
  notice(oppSummary,errors.length?'error':'success');
- if(setupActive&&setupPhase==='opp'&&(matched||unmatched)){
+ if(setupActive&&setupPhase==='opp'&&(matched||unmatched||ignored)){
   setupPhase='next';setupLastOppImport=oppSummary;
   render();queueMicrotask(()=>wizardScrollToStep('setup-next-step'));
  }
@@ -1490,8 +1491,15 @@ async function importOPPs(files){
 }
 function reviewPendingOPPs(){
  if(!data.pendingOPPs?.length){notice('There are no unmatched OPPs.');return;}
+ const keys=new Set(data.students.map(s=>nameKey(s.name)).filter(Boolean));
+ const unrelated=data.pendingOPPs.filter(p=>!keys.has(nameKey(p.opp.name))).length;
+ if(unrelated){
+  if(!confirm(`Remove ${unrelated} pending OPP(s) with no exact name match in your imported classes? You can re-import these documents after adding more classes or correcting a name.`))return;
+  mutation(()=>{data.pendingOPPs=data.pendingOPPs.filter(p=>keys.has(nameKey(p.opp.name)));});
+ }
+ if(!data.pendingOPPs.length){notice('No OPP matches require review for your imported classes.','success');return;}
  const pending=data.pendingOPPs[0],matches=data.students.filter(s=>nameKey(s.name)===nameKey(pending.opp.name));
- const pupils=data.students.slice().sort((a,b)=>a.name.localeCompare(b.name,'en-GB'));
+ const pupils=matches.slice().sort((a,b)=>a.name.localeCompare(b.name,'en-GB'));
  openModal('Match OPP to a pupil',`<p><strong>Document:</strong> ${esc(pending.filename)}</p><p><strong>Detected name:</strong> ${esc(pending.opp.name)}</p><div class="alert">${data.pendingOPPs.length} unmatched document(s). Check the pupil identity carefully. No match is applied automatically when names are ambiguous.</div><label>Choose correct pupil${choose('studentId',[{value:'',label:'Select pupil after checking identity'},...pupils.map(x=>({value:x.id,label:x.name+' · '+(data.classes.find(c=>c.id===x.classId)?.name||'Class')}))],matches.length===1?matches[0].id:'')}</label><label class="check"><input type="checkbox" name="applyAll"> Apply to all class entries with exactly the same pupil name (only if confirmed to be the same pupil)</label>`,fd=>{
   const id=fd.get('studentId'),selected=data.students.find(s=>s.id===id);
   if(!selected)throw new Error('Choose the correct pupil first.');
