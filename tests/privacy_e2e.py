@@ -89,6 +89,7 @@ async def main():
             await page.locator('#verifyBackupFile').set_input_files(await first_file.path())
             await page.locator('#modalForm input[name=password]').fill('SyntheticPass123')
             await page.locator('#modalForm button[type=submit]').click()
+            await page.locator('#modalForm').wait_for(state='detached',timeout=20000)
             assert await page.get_by_role('button',name='Continue to seating plans').is_enabled()
             await page.get_by_role('button',name='Continue to seating plans').click()
             # Guide seating creation through all imported classes with the existing
@@ -116,6 +117,7 @@ async def main():
             await page.locator('#verifyBackupFile').set_input_files(await last_file.path())
             await page.locator('#modalForm input[name=password]').fill('SyntheticPass123')
             await page.locator('#modalForm button[type=submit]').click()
+            await page.locator('#modalForm').wait_for(state='detached',timeout=20000)
             assert await page.get_by_role('button',name='Finish guided setup').is_enabled()
             await page.get_by_role('button',name='Finish guided setup').click()
             assert await page.get_by_text('Ready to teach').count()>=1
