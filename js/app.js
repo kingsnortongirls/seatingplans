@@ -45,8 +45,8 @@ function redo(){if(!future.length)return;backupVerifyStatus='';wizardVerified=''
 function reconcile(){if(!Array.isArray(data.assessments))data.assessments=[];if(!Array.isArray(data.questioningLog))data.questioningLog=[];if(!Array.isArray(data.yearRollovers))data.yearRollovers=[];if(!Array.isArray(data.pendingOPPs))data.pendingOPPs=[];if(!data.rooms.length)data.rooms=[defaultRoom()];if(!data.rooms.some(r=>r.id===roomId))roomId=data.rooms[0].id;if(!data.classes.some(c=>c.id===classId))classId=data.classes[0]?.id||'';if(!data.plans.some(p=>p.id===planId&&p.classId===classId))planId=data.plans.filter(p=>p.classId===classId).at(-1)?.id||'';}
 function goto(next){if(view==='assessment-entry'&&next!=='assessment-entry'&&assessmentWizard){if(!confirm('Discard the unfinished whole-class assessment? No grades have been saved yet.'))return;assessmentWizard=null;}seatMoveSource='';placingStudentId='';if(!['tools','lesson'].includes(next))stopPickerSpin();if(setupActive&&next!=='setup'&&!(setupPhase==='plan'&&next==='seating')){setupActive=false;setupPhase='import';}view=next;render();window.scrollTo({top:0,behavior:'instant'});}
 function setClass(id){if(assessmentWizard&&id!==classId){if(!confirm('Discard your unfinished assessment grades before switching classes?'))return;assessmentWizard=null;}seatMoveSource='';placingStudentId='';stopPickerSpin();if(homeworkSession&&homeworkSession.classId!==id){if(!confirm('Cancel unfinished homework marking and switch classes? No homework records have been written.'))return;homeworkSession=null;}classId=id;planId=data.plans.filter(p=>p.classId===id).at(-1)?.id||'';roomId=data.plans.find(p=>p.id===planId)?.roomId||roomId;selectedStudent='';selectedSeat='';absent.clear();groupResult=[];lastPicked='';}
-function render(){reconcile();$$('#nav [data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view===(view==='assessment-entry'?'assessments':view)));$('#breadcrumbs').textContent=({welcome:'Start here',setup:'Set up classes',dashboard:'Your workspace',seating:'Seating plans',lesson:'Lesson mode',assessments:'Assessment history','assessment-entry':'Whole-class assessment',overview:'Class overview',rooms:'Classroom designer',profiles:'Pupil profiles',records:'Teacher records',tools:'Teaching tools',backup:'Backup & restore'})[view];$('#saveIndicator').textContent=dirty?'● Changes not backed up':'Session only';$('#undoButton').disabled=history.length===0;$('#redoButton').disabled=future.length===0;
- const views={welcome:welcome,setup:setup,dashboard:dashboard,seating:seating,lesson:lesson,assessments:assessmentsView,'assessment-entry':assessmentWizardView,overview:classOverview,rooms:rooms,profiles:profiles,records:records,tools:tools,backup:backup};$('#privacyToggle').querySelector('span').textContent=privacyLocked?'Unlock screen':'Privacy lock';$('#app').innerHTML=privacyLocked?'<div class="privacy-cover"><h1>Screen concealed</h1><p>Pupil and staff information is temporarily hidden. Select Unlock screen to return to your workspace.</p></div>':views[view]();}
+function render(){reconcile();$$('#nav [data-view]').forEach(n=>n.classList.toggle('active',n.dataset.view===(view==='assessment-entry'?'assessments':view)));$('#breadcrumbs').textContent=({welcome:'Start here',setup:'Set up classes',dashboard:'Your workspace',seating:'Seating plans',lesson:'Lesson mode',assessments:'Assessment history','assessment-entry':'Whole-class assessment',overview:'Class overview',manage:'Manage classes',rooms:'Classroom designer',profiles:'Pupil profiles',records:'Teacher records',tools:'Teaching tools',backup:'Backup & restore'})[view];$('#saveIndicator').textContent=dirty?'● Changes not backed up':'Session only';$('#undoButton').disabled=history.length===0;$('#redoButton').disabled=future.length===0;
+ const views={welcome:welcome,setup:setup,dashboard:dashboard,seating:seating,lesson:lesson,assessments:assessmentsView,'assessment-entry':assessmentWizardView,overview:classOverview,manage:manageClassView,rooms:rooms,profiles:profiles,records:records,tools:tools,backup:backup};$('#privacyToggle').querySelector('span').textContent=privacyLocked?'Unlock screen':'Privacy lock';$('#app').innerHTML=privacyLocked?'<div class="privacy-cover"><h1>Screen concealed</h1><p>Pupil and staff information is temporarily hidden. Select Unlock screen to return to your workspace.</p></div>':views[view]();}
 const classChoices=(value=classId)=>choose('classId',data.classes.map(c=>({value:c.id,label:c.name})),value,'data-action="select-class"');
 const planChoices=(value=planId)=>choose('planId',data.plans.filter(p=>p.classId===classId).map(p=>({value:p.id,label:p.name})),value,'data-action="select-plan"');
 // An intentionally transient first-run journey. We never remember that a teacher
@@ -521,6 +521,62 @@ function assessmentModal(id=''){
  },old?'Save changes':'Save assessment');
 }
 
+
+function detachClassSeats(sourceId,ids){
+ for(const p of data.plans.filter(p=>p.classId===sourceId)){
+  const freed=Object.keys(p.assignments||{}).filter(k=>ids.has(p.assignments[k]));
+  for(const k of freed)delete p.assignments[k];
+  p.locks=(p.locks||[]).filter(k=>!freed.includes(k));
+  if(p.previousAssignments)p.previousAssignments=Object.fromEntries(Object.entries(p.previousAssignments).filter(([k,v])=>!ids.has(v)));
+  p.rules=(p.rules||[]).filter(rule=>!ids.has(rule.a)&&!ids.has(rule.b));
+ }
+}
+function manageClassView(){
+ const cls=currentClass();
+ const header=heading('Manage classes','Correct imported class lists, move pupils and manage teaching groups.',button('Back to class overview','manage-back','btn')+button('Create empty class','manage-create','btn'));
+ if(!cls)return header+card(empty('No classes','Create a class or import an Edulink marksheet.'));
+ const pupils=data.students.filter(s=>s.classId===cls.id).sort((a,b)=>a.name.localeCompare(b.name,'en-GB'));
+ return header+'<div class="board-tools"><label>Class'+classChoices()+'</label>'+button('Rename class','manage-rename','btn')+button('Delete class','manage-delete','btn btn-danger')+'</div>'+
+ '<section class="card"><h2>'+esc(cls.name)+' · '+pupils.filter(s=>s.active!==false).length+' active pupils</h2><p class="muted">Tick the pupils you want to move or remove. Moving keeps their OPPs, grades and teacher records, but clears their old seat and seating rules. Removed pupils are marked inactive and can be restored.</p>'+
+ '<div class="button-row">'+button('Select all','manage-select-all','btn btn-small')+button('Clear selection','manage-select-none','btn btn-small')+button('Move selected pupils','manage-move','btn btn-primary')+button('Remove selected (inactive)','manage-inactive','btn')+button('Restore selected','manage-restore','btn')+'</div>'+
+ '<p class="muted tiny" id="manageCount" aria-live="polite">0 selected</p><div class="list-scroll" style="max-height:65vh">'+pupils.map(s=>'<label class="list-card check"><input type="checkbox" data-manage-pupil value="'+esc(s.id)+'"><div><strong>'+esc(s.name)+'</strong><small>'+esc([s.reg,s.active===false?'Inactive':'Active'].filter(Boolean).join(' · '))+'</small></div></label>').join('')+'</div></section>';
+}
+function manageSelected(){
+ return new Set($('#app [data-manage-pupil]:checked').map(el=>el.value));
+}
+function manageCount(){const el=$('#manageCount');if(el)el.textContent=manageSelected().size+' selected';}
+function uniqueClassName(value,except=''){
+ const name=clean(value);
+ if(!name)throw new Error('Enter a class name.');
+ if(data.classes.some(c=>c.id!==except&&c.name.toLowerCase()===name.toLowerCase()))throw new Error('A class with that name already exists.');
+ return name;
+}
+function manageMove(){
+ const source=currentClass(),ids=manageSelected();
+ if(!source||!ids.size){notice('Select at least one pupil first.','error');return;}
+ openModal('Move '+ids.size+' pupil(s)', '<p>Move selected pupils from <strong>'+esc(source.name)+'</strong>. Their existing pupil records will follow them. Old seats and rules will be cleared.</p><label>Destination'+choose('destination',[{value:'new',label:'Create a new class'},...data.classes.filter(c=>c.id!==source.id).map(c=>({value:c.id,label:c.name}))],'new')+'</label><label>New class name (only if creating a class)<input name="newName" maxlength="140"></label>',fd=>{
+  const destId=String(fd.get('destination')),isNew=destId==='new';
+  const dest=isNew?{id:uid(),name:uniqueClassName(fd.get('newName')),assessmentHeaders:[],selectedAssessment:''}:data.classes.find(c=>c.id===destId&&c.id!==source.id);
+  if(!dest)throw new Error('Choose a destination class.');
+  const moving=data.students.filter(s=>s.classId===source.id&&ids.has(s.id));
+  const existing=data.students.filter(s=>s.classId===dest.id);
+  if(moving.some((s,i)=>[...existing,...moving.slice(0,i)].some(t=>nameKey(t.name)===nameKey(s.name)||(s.externalId&&t.externalId===s.externalId))))throw new Error('A selected pupil has a possible duplicate in the destination. Move the other pupils separately; no records have changed.');
+  mutation(()=>{
+   if(isNew)data.classes.push(dest);
+   dest.assessmentHeaders=[...new Set([...(dest.assessmentHeaders||[]),...(source.assessmentHeaders||[])])].slice(0,45);
+   if(!dest.selectedAssessment)dest.selectedAssessment=source.selectedAssessment||'';
+   detachClassSeats(source.id,ids);
+   for(const s of moving){s.classId=dest.id;s.className=dest.name;if(dest.selectedAssessment&&Object.prototype.hasOwnProperty.call(s.gradeColumns||{},dest.selectedAssessment))s.current=s.gradeColumns[dest.selectedAssessment];}
+   for(const collection of [data.records,data.assessments,data.questioningLog])for(const record of collection||[])if(record.classId===source.id&&ids.has(record.studentId))record.classId=dest.id;
+   const asked=data.questioned[source.id]||[];
+   data.questioned[dest.id]=[...new Set([...(data.questioned[dest.id]||[]),...asked.filter(id=>ids.has(id))])];
+   data.questioned[source.id]=asked.filter(id=>!ids.has(id));
+   selectedSeat='';selectedStudent='';absent.clear();groupResult=[];lastPicked='';
+  });
+  notice(moving.length+' pupil(s) moved. Undo is available. Make a new encrypted backup.','success');
+ },'Move pupils');
+}
+
 function classOverview(){
  const cls=currentClass(),list=currentStudents();if(!cls)return heading('Class overview','Pupil monitoring and import quality.')+card(empty('No class','Import a class first.'));
  const qc=classQuality(data.students,data.classes,classId),records=data.records.filter(x=>x.classId===classId);
@@ -546,7 +602,7 @@ function classOverview(){
  (!issueRows.length?'<p>No duplicate names or missing selected assessment/target values detected.</p>':'')+
  (cls.importWarnings||[]).map(w=>'<p class="alert"><strong>Import warning:</strong> '+esc(w)+'</p>').join('')+'</div>';
  return heading('Class overview','Class attainment, confidential teacher records and data-quality checks.',
- button('Assessment history','go-assessments','btn')+button('Add whole class assessment','new-class-assessment','btn btn-primary')+button('Year rollover','year-rollover','btn')+button('Export overview','export-class-summary','btn'))+
+ button('Manage classes','manage-open','btn')+button('Assessment history','go-assessments','btn')+button('Add whole class assessment','new-class-assessment','btn btn-primary')+button('Year rollover','year-rollover','btn')+button('Export overview','export-class-summary','btn'))+
  '<div class="board-tools"><label>Class'+classChoices()+'</label></div>'+
  '<div class="grid four">'+stat(list.length,'Pupils','Active class register')+stat(send,'SEND','Flagged pupils')+stat(pp,'PP','Flagged pupils')+stat(eal,'EAL','Flagged pupils')+
  stat(below,'Below target','Comparable COTTA')+stat(records.filter(r=>r.type==='homework'&&r.status==='Missing').length,'Missing homework','Open records')+
@@ -963,10 +1019,19 @@ function assignSeat(seatId,id){const p=currentPlan();if(!p||!currentStudents().s
  catch(err){notice(err.message,'error');}
 }
 function openModal(title,body,onSave,saveLabel='Save'){const root=$('#modalRoot');root.innerHTML=`<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><h2>${esc(title)}</h2><form id="modalForm">${body}<div class="modal-actions">${button('Cancel','close-modal','btn')}<button class="btn btn-primary" type="submit">${esc(saveLabel)}</button></div></form></div></div>`;root.querySelector('#modalForm').onsubmit=e=>{e.preventDefault();try{const values=new FormData(e.currentTarget);const result=onSave(values);if(result&&typeof result.then==='function')result.then(()=>{closeModal();}).catch(e=>notice(e.message,'error'));else closeModal();}catch(err){notice(err.message,'error');}};root.querySelector('[data-action=close-modal]').onclick=closeModal;root.querySelector('.modal-backdrop').addEventListener('click',e=>{if(e.target.classList.contains('modal-backdrop'))closeModal();});root.querySelector('input,select,textarea')?.focus();}
+document.addEventListener('change',e=>{if(e.target.matches?.('[data-manage-pupil]'))manageCount();});
 function closeModal(){$('#modalRoot').replaceChildren();}
 const field=(name,title,value='',type='text')=>`<label>${esc(title)}<input type="${type}" name="${name}" value="${esc(value)}" ${type==='text'?'maxlength="140"':''} required></label>`;
 function showStudent(id){selectedStudent=id;profileTab='support';goto('profiles');}
 function action(id,attrs={}){try{switch(id){
+ case 'manage-open':goto('manage');break;
+ case 'manage-back':goto('overview');break;
+ case 'manage-create':openModal('Create class',field('name','Class name'),fd=>{const name=uniqueClassName(fd.get('name'));mutation(()=>{const cls={id:uid(),name,assessmentHeaders:[],selectedAssessment:''};data.classes.push(cls);classId=cls.id;});},'Create class');break;
+ case 'manage-rename':{const cls=currentClass();if(!cls)break;openModal('Rename class',field('name','Class name',cls.name),fd=>{const name=uniqueClassName(fd.get('name'),cls.id);mutation(()=>{cls.name=name;for(const s of data.students.filter(s=>s.classId===cls.id))s.className=name;});},'Rename class');break;}
+ case 'manage-select-all':case 'manage-select-none':$('#app [data-manage-pupil]').forEach(el=>el.checked=id==='manage-select-all');manageCount();break;
+ case 'manage-move':manageMove();break;
+ case 'manage-inactive':case 'manage-restore':{const cls=currentClass(),ids=manageSelected();if(!cls||!ids.size){notice('Select pupils first.','error');break;}const remove=id==='manage-inactive';if(remove&&!confirm('Mark '+ids.size+' selected pupil(s) inactive and clear their seats and rules? Their records will remain available for restoration.'))break;mutation(()=>{if(remove)detachClassSeats(cls.id,ids);for(const s of data.students)if(s.classId===cls.id&&ids.has(s.id))s.active=!remove;});notice('Class register updated. Undo is available.','success');break;}
+ case 'manage-delete':{const cls=currentClass();if(!cls)break;openModal('Delete class','<div class="alert">This deletes the class, its pupils, OPPs, assessments, teacher records and seating plans from this session. Export an encrypted backup first. Move any pupils you want to keep before deleting.</div>'+field('confirm','Type the exact class name to confirm'),fd=>{if(clean(fd.get('confirm'))!==cls.name)throw new Error('Class name does not match.');const ids=new Set(data.students.filter(s=>s.classId===cls.id).map(s=>s.id));mutation(()=>{data.classes=data.classes.filter(c=>c.id!==cls.id);data.students=data.students.filter(s=>!ids.has(s.id));data.plans=data.plans.filter(p=>p.classId!==cls.id);for(const key of ['records','assessments','questioningLog'])data[key]=(data[key]||[]).filter(x=>x.classId!==cls.id&&!ids.has(x.studentId));delete data.questioned[cls.id];data.yearRollovers=(data.yearRollovers||[]).filter(x=>x.fromClassId!==cls.id&&x.toClassId!==cls.id);selectedStudent='';selectedSeat='';absent.clear();groupResult=[];lastPicked='';});notice('Class deleted. Undo is available.','success');},'Delete class');break;}
  case 'wizard-start':setupActive=true;setupPhase=data.classes.length?'next':'import';setupLastImport='';setupLastOppImport='';setupYearGroups=[];goto('setup');break;
  case 'wizard-import-next':$('#csvFile').click();break;
  case 'wizard-import-opp':$('#oppFiles').click();break;
