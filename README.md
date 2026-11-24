@@ -46,7 +46,7 @@ Staffshare is a folder-location instruction, **not an automatic network connecti
 
 - Import or refresh Edulink marksheets with pupil name, class, reg group, SEND, PP, EAL, prior attainment, reading/spelling ages, target and current grades.
 - Bulk OPP import from `.docx`, searchable `.pdf` or `.zip` files, including mixed PDF/Word archives. Word text boxes and photographs are supported; searchable PDF text is extracted locally without accessing a service. Scanned/image-only PDFs, encrypted PDFs or unusual PDF encodings are reported as errors rather than silently attached to pupils. Ambiguous pupil matches require review.
-- Standard 2-4-2 room (four rows, 32 seats), **IT3 (34 seats: 8 top, 7 left, 7 right and 12 on the central island in two rows of 6)**, **IT2 (33 seats: 8 left, 7 right, 10 central, 4 upper and 4 lower)**, **IT1 (31 seats: 10 left, 7 right, 12 central, 2 upper-right)**, **RM29 (29 seats: 6 left, 5 right, 9 paired centre desks)**, pairs, group tables and U-shape, plus custom drag-and-drop editing, teacher desk and per-seat accessibility priority.
+- Standard 2-4-2 room (four rows, 32 seats), **IT3 (34 seats: 8 top, 7 left, 7 right and 12 on the central island in two rows of 6)**, **IT2 (33 seats: 8 left, 7 right, 10 central, 4 upper and 4 lower)**, **IT1 (33 seats: 10 left, 8 right, 12 central, 3 upper-right)**, **RM29 (29 seats: 6 left, 5 right, 9 paired centre desks)**, pairs, group tables and U-shape, plus custom drag-and-drop editing, teacher desk and per-seat accessibility priority.
 - Manual placement, swaps and locking; automatically suggested seating according to separation, preferred pairing and accessible seating rules. Optional **SEND and/or Pupil Premium accessible seat preference** is selected separately on each plan, with capacity and individual unaccommodated-pupil reporting. Conflicts are reported rather than silently ignored.
 - Named seating plan versions, duplication, comparison and undo/redo.
 - Missing homework, lateness, behaviour entries, dated notes, pupil support and attainment views.
@@ -57,7 +57,7 @@ Staffshare is a folder-location instruction, **not an automatic network connecti
 
 Two additional **editable** presets have been reconstructed from the supplied Edulink seating-plan screenshots. Only desk positions were reproduced, not real pupil names, photographs or assignments:
 
-- **IT1:** 31 places, including ten along the left wall, seven on the right, six in each of two central computer banks and two extra desks in the upper-right corner. The whiteboard is shown at the bottom, as in the screenshot.
+- **IT1:** 33 places, including ten along the left wall, eight on the right, six in each of two central computer banks and three desks in the upper-right corner. The whiteboard is shown at the bottom, as in the screenshot.
 - **RM29:** 29 places, including six single positions along the left, five down the right and nine paired desks arranged in three columns by three rows. The screenshot does **not** identify the whiteboard side, so the top is a provisional starting position.
 
 **Empty positions count as usable seats.** Each one remains individually movable, assignable and editable. Neither room starts with pupil-specific accessibility priorities, since those cannot be established from the screenshots.
