@@ -258,13 +258,14 @@ export async function readOppFiles(files,progress=()=>{}) {
  return result;
 }
 
+const standardAccessibleSeats=new Set([2,3,6,7,10,11,14,15,18,19,22,23,25,26,27,28,29,30,31]);
 export function defaultRoom(name='Standard 2-4-2') {
  const seats=[];const xs=[9,19,36,46,56,66,83,93];
  for(let row=0;row<4;row++)for(let i=0;i<8;i++){
   seats.push({id:uid(),label:String(row*8+i+1),x:xs[i],y:24+row*18,rotation:0,
-   priority:'normal',group:'R'+(row+1)+'-'+(i<2?'L':i<6?'C':'R')});
+   priority:standardAccessibleSeats.has(row*8+i+1)?'access':'normal',group:'R'+(row+1)+'-'+(i<2?'L':i<6?'C':'R')});
  }
- return {id:uid(),name,preset:'242',seats,teacher:{x:78,y:7},board:'front'};
+ return {id:uid(),name,preset:'242',access242Version:1,seats,teacher:{x:78,y:7},board:'front'};
 }
 export function buildPreset(kind,name) {
  if(kind==='242')return defaultRoom(name||'Standard 2-4-2');
@@ -389,9 +390,18 @@ function extendOriginalIT1(layout,extraSeats){
 // Ensure the current templates exist after restoring an old backup.
 // Add seats to unmodified legacy 31-seat IT1 rooms and their saved plans,
 // but never alter customised layouts or move existing pupil assignments.
+function upgradeStandardAccess(layout){
+ if(!layout||layout.access242Version===1||layout.seats?.length!==32)return false;
+ const xs=[9,19,36,46,56,66,83,93];
+ if(!layout.seats.every(s=>{const n=Number(s.label);return Number.isInteger(n)&&n>=1&&n<=32&&Math.abs(s.x-xs[(n-1)%8])<0.01&&Math.abs(s.y-(24+Math.floor((n-1)/8)*18))<0.01;}))return false;
+ for(const s of layout.seats)if(standardAccessibleSeats.has(Number(s.label))&&s.priority==='normal')s.priority='access';
+ layout.access242Version=1;return true;
+}
 export function addMissingSchoolRooms(rooms,plans=[]){
  if(!Array.isArray(rooms))throw new Error('Room collection is not an array.');
  let changed=0;
+ for(const room of rooms)if(upgradeStandardAccess(room))changed++;
+ for(const plan of plans||[])if(upgradeStandardAccess(plan.layout))changed++;
  for(const kind of ['it1','rm29']){
   if(rooms.some(room=>String(room.preset||room.kind||'').toLowerCase()===kind||
    String(room.name||'').trim().toLowerCase()===kind))continue;
@@ -416,7 +426,7 @@ export function addMissingSchoolRooms(rooms,plans=[]){
 
 export function newPlan(classId,room,label) {
  return {id:uid(),classId,roomId:room.id,name:label||'Autumn 1',created:new Date().toISOString(),
-  layout:clone({kind:room.kind||'',seats:room.seats,teacher:room.teacher,board:room.board}),assignments:{},locks:[],
+  layout:clone({kind:room.kind||'',access242Version:room.access242Version,seats:room.seats,teacher:room.teacher,board:room.board}),assignments:{},locks:[],
   rules:[],accessPreference:{send:false,pp:false},generationOptions:{keepApart:true,keepLocked:true,mixed:false,front:true},notes:''};
 }
 // A teacher can explicitly opt into preferring accessible seating for SEND,
